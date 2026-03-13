@@ -2,7 +2,7 @@
 
 * Manuelle Technique
 
-* Manuelle Dutilisation 
+* Manuelle D'utilisation 
 
 * Cahier de Charges 
 

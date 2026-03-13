@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AuthentiCom — README</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d14;
+    --bg2: #111520;
+    --bg3: #161b28;
+    --surface: #1a2035;
+    --surface2: #1f2640;
+    --border: rgba(99,179,237,0.12);
+    --border2: rgba(99,179,237,0.22);
+    --accent: #3b82f6;
+    --accent2: #60a5fa;
+    --accent3: #93c5fd;
+    --gold: #f59e0b;
+    --gold2: #fbbf24;
+    --green: #10b981;
+    --green2: #34d399;
+    --red: #ef4444;
+    --text: #e8eaf0;
+    --text2: #9aa3b8;
+    --text3: #5d6a82;
+    --glow: rgba(59,130,246,0.15);
+    --glow2: rgba(59,130,246,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes scanline {
+    0%   { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+  @keyframes pulse-ring {
+    0%   { transform: scale(1);   opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-6px); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; } 50% { opacity: 0; }
+  }
+  @keyframes progressFill {
+    from { width: 0; }
+  }
+  @keyframes rotateShield {
+    0%   { transform: rotateY(0deg); }
+    50%  { transform: rotateY(15deg); }
+    100% { transform: rotateY(0deg); }
+  }
+  @keyframes gridGlow {
+    0%, 100% { opacity: 0.03; }
+    50%       { opacity: 0.07; }
+  }
+  @keyframes connFlow {
+    from { stroke-dashoffset: 40; }
+    to   { stroke-dashoffset: 0; }
+  }
+
+  /* ─── GRID BG ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(99,179,237,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,179,237,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridGlow 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* ─── SCANLINE ─── */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 120px;
+    background: linear-gradient(to bottom, transparent, rgba(59,130,246,0.03), transparent);
+    animation: scanline 8s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    padding: 80px 0 60px;
+    text-align: center;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(59,130,246,0.1);
+    border: 1px solid var(--border2);
+    border-radius: 100px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+
+  .hero-badge .dot {
+    width: 6px; height: 6px;
+    background: var(--green2);
+    border-radius: 50%;
+    position: relative;
+  }
+  .hero-badge .dot::after {
+    content: '';
+    position: absolute; inset: -3px;
+    border-radius: 50%;
+    background: var(--green2);
+    animation: pulse-ring 1.8s ease-out infinite;
+  }
+
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.8rem, 6vw, 4.2rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+  }
+
+  .hero-title .gradient-text {
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 40%, #f472b6 80%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 4s linear infinite;
+  }
+
+  .hero-subtitle {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.15rem);
+    font-weight: 400;
+    color: var(--text2);
+    margin-bottom: 32px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-shield {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px; height: 96px;
+    margin: 0 auto 28px;
+    position: relative;
+    animation: float 4s ease-in-out infinite;
+  }
+  .hero-shield svg {
+    animation: rotateShield 6s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(59,130,246,0.4));
+  }
+  .hero-shield::before {
+    content: '';
+    position: absolute; inset: -12px;
+    border-radius: 50%;
+    border: 1px solid rgba(59,130,246,0.2);
+    animation: pulse-ring 2.5s ease-out infinite;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn-group {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    border: none;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 24px rgba(59,130,246,0.35);
+  }
+  .btn-primary:hover {
+    background: var(--accent2);
+    box-shadow: 0 0 32px rgba(59,130,246,0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .btn-outline:hover {
+    color: var(--text);
+    border-color: rgba(99,179,237,0.4);
+    background: var(--glow2);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover {
+    background: var(--surface2);
+    color: var(--text);
+    transform: translateY(-1px);
+  }
+
+  /* ─── BADGES ROW ─── */
+  .badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 56px;
+    animation: fadeIn 1s ease 0.3s both;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    border: 1px solid;
+  }
+  .badge-blue  { background: rgba(59,130,246,0.1); color: #93c5fd; border-color: rgba(59,130,246,0.25); }
+  .badge-green { background: rgba(16,185,129,0.1); color: #6ee7b7; border-color: rgba(16,185,129,0.25); }
+  .badge-gold  { background: rgba(245,158,11,0.1); color: #fcd34d; border-color: rgba(245,158,11,0.25); }
+  .badge-red   { background: rgba(239,68,68,0.1);  color: #fca5a5; border-color: rgba(239,68,68,0.25); }
+  .badge-purple{ background: rgba(139,92,246,0.1); color: #c4b5fd; border-color: rgba(139,92,246,0.25); }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border2), transparent);
+    margin: 48px 0;
+  }
+
+  /* ─── SECTION ─── */
+  .section {
+    margin-bottom: 56px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+  .section-label::before {
+    content: '';
+    width: 20px; height: 1.5px;
+    background: var(--accent2);
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  .section-body {
+    color: var(--text2);
+    line-height: 1.8;
+  }
+
+  /* ─── PROBLEM CARD ─── */
+  .problem-card {
+    background: linear-gradient(135deg, rgba(239,68,68,0.07) 0%, rgba(239,68,68,0.03) 100%);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 16px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .problem-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(239,68,68,0.6), transparent);
+  }
+
+  .problem-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .problem-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+    background: rgba(239,68,68,0.05);
+    border: 1px solid rgba(239,68,68,0.12);
+    border-radius: 10px;
+    font-size: 13.5px;
+    color: var(--text2);
+    transition: all 0.2s;
+  }
+  .problem-item:hover {
+    background: rgba(239,68,68,0.09);
+    border-color: rgba(239,68,68,0.22);
+    color: var(--text);
+  }
+  .problem-item .icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ─── FEATURES GRID ─── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    transition: all 0.25s ease;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, var(--glow), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .feature-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .feature-card:hover::after { opacity: 1; }
+
+  .feature-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 14px;
+  }
+  .feature-icon.blue   { background: rgba(59,130,246,0.15); }
+  .feature-icon.green  { background: rgba(16,185,129,0.15); }
+  .feature-icon.gold   { background: rgba(245,158,11,0.15); }
+  .feature-icon.purple { background: rgba(139,92,246,0.15); }
+
+  .feature-name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .feature-desc {
+    font-size: 13px;
+    color: var(--text3);
+    line-height: 1.6;
+  }
+
+  /* ─── TECH STACK ─── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .stack-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .stack-group:hover { border-color: var(--border2); }
+
+  .stack-group-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 14px;
+  }
+
+  .stack-items { display: flex; flex-direction: column; gap: 8px; }
+
+  .stack-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .stack-item .tech-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .td-blue   { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.6); }
+  .td-green  { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.6); }
+  .td-gold   { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.6); }
+  .td-purple { background: #8b5cf6; box-shadow: 0 0 6px rgba(139,92,246,0.6); }
+  .td-red    { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.6); }
+  .td-cyan   { background: #06b6d4; box-shadow: 0 0 6px rgba(6,182,212,0.6); }
+
+  /* ─── USERS ─── */
+  .users-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) { .users-grid { grid-template-columns: 1fr; } }
+
+  .user-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px;
+    transition: all 0.25s;
+  }
+  .user-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+  .user-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .user-avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+  .ua-blue   { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.25); }
+  .ua-green  { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.25); }
+
+  .user-card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
+  .user-cap {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13.5px;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+  .cap-check { color: var(--green2); flex-shrink: 0; margin-top: 1px; }
+  .cap-lock  { color: var(--gold2); flex-shrink: 0; margin-top: 1px; }
+
+  /* ─── FLOW STEPS ─── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 18px;
+    position: relative;
+    padding-bottom: 28px;
+  }
+  .flow-step:last-child { padding-bottom: 0; }
+
+  .flow-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .flow-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 16px rgba(59,130,246,0.4);
+  }
+
+  .flow-line {
+    flex: 1;
+    width: 1.5px;
+    background: linear-gradient(to bottom, rgba(59,130,246,0.4), rgba(59,130,246,0.1));
+    margin-top: 8px;
+  }
+  .flow-step:last-child .flow-line { display: none; }
+
+  .flow-content {
+    flex: 1;
+    padding-top: 6px;
+  }
+  .flow-content strong { color: var(--text); font-weight: 600; }
+  .flow-content p { color: var(--text2); font-size: 14px; margin-top: 4px; }
+
+  /* ─── CODE BLOCK ─── */
+  .code-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .code-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .cd-red  { background: #ef4444; }
+  .cd-gold { background: #f59e0b; }
+  .cd-green{ background: #10b981; }
+
+  .code-label {
+    font-size: 12px;
+    color: var(--text3);
+    margin-left: 4px;
+    font-family: monospace;
+  }
+
+  .code-body {
+    padding: 18px 20px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #94a3b8;
+    overflow-x: auto;
+  }
+  .code-body .kw { color: #7dd3fc; }
+  .code-body .str{ color: #86efac; }
+  .code-body .cm { color: #475569; font-style: italic; }
+  .code-body .fn { color: #c4b5fd; }
+  .code-body .op { color: #f472b6; }
+  .code-body .num{ color: #fcd34d; }
+
+  /* ─── SECURITY SECTION ─── */
+  .security-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .security-item {
+    background: rgba(245,158,11,0.05);
+    border: 1px solid rgba(245,158,11,0.15);
+    border-radius: 12px;
+    padding: 18px;
+    transition: all 0.2s;
+  }
+  .security-item:hover {
+    background: rgba(245,158,11,0.09);
+    border-color: rgba(245,158,11,0.25);
+    transform: translateY(-2px);
+  }
+  .security-item .si-icon { font-size: 20px; margin-bottom: 10px; }
+  .security-item .si-title {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .security-item .si-desc { font-size: 12.5px; color: var(--text3); }
+
+  /* ─── STATUS ─── */
+  .status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+  }
+
+  .status-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: gap;
+  }
+
+  .status-label-group { display: flex; align-items: center; gap: 10px; }
+  .status-pulse {
+    width: 10px; height: 10px;
+    background: var(--gold);
+    border-radius: 50%;
+    position: relative;
+    animation: pulse-ring 1.5s ease-out infinite;
+  }
+  .status-pulse::after {
+    content: '';
+    position: absolute; inset: -3px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse-ring 1.5s ease-out infinite 0.3s;
+  }
+
+  .status-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--gold);
+  }
+
+  .version-tag {
+    font-size: 11px;
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.25);
+    color: var(--gold2);
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+
+  .progress-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .progress-row { }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 7px;
+  }
+  .progress-name { color: var(--text2); }
+  .progress-pct  { color: var(--text3); }
+
+  .progress-bar {
+    height: 5px;
+    background: var(--surface2);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 100px;
+    animation: progressFill 1.4s cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+  .pf-blue   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  .pf-green  { background: linear-gradient(90deg, #10b981, #34d399); }
+  .pf-gold   { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .pf-purple { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+
+  /* ─── CONTRIB ─── */
+  .contrib-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .contrib-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    gap: 12px;
+    transition: all 0.2s;
+  }
+  .contrib-step:hover {
+    border-color: var(--border2);
+    transform: translateY(-2px);
+  }
+  .contrib-num {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--glow);
+    border: 1px solid var(--border2);
+    color: var(--accent3);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .contrib-text { font-size: 13px; color: var(--text2); }
+  .contrib-text strong { color: var(--text); display: block; margin-bottom: 3px; }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0;
+    text-align: center;
+    color: var(--text3);
+    font-size: 13px;
+  }
+  .footer a { color: var(--accent3); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+  .footer-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    margin-bottom: 8px;
+  }
+  .footer-logo .gradient-text {
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ─── SCROLL ANIMATIONS ─── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── INLINE CODE ─── */
+  code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 12.5px;
+    color: var(--accent3);
+  }
+
+  /* ─── QR VISUAL ─── */
+  .qr-section {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .qr-visual {
+    flex-shrink: 0;
+  }
+  .qr-text { flex: 1; min-width: 200px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-shield">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+        <path d="M40 8L14 18V38C14 53.5 25.5 67.8 40 72C54.5 67.8 66 53.5 66 38V18L40 8Z"
+              fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.6)" stroke-width="1.5"/>
+        <path d="M40 16L22 24V38C22 50.2 29.8 61.5 40 65.5C50.2 61.5 58 50.2 58 38V24L40 16Z"
+              fill="rgba(59,130,246,0.08)"/>
+        <path d="M32 40L37 45L48 34" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Projet de Fin d'Études · Licence Informatique
+    </div>
+
+    <h1 class="hero-title">
+      <span class="gradient-text">AuthentiCom</span>
+    </h1>
+    <p class="hero-subtitle">
+      Plateforme sécurisée de validation des communiqués officiels par signature numérique — contre la fraude documentaire institutionnelle
+    </p>
+
+    <div class="btn-group">
+      <a href="https://github.com/your-repository/authenticom" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        Voir sur GitHub
+      </a>
+      <a href="#fonctionnalites" class="btn btn-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        Fonctionnalités
+      </a>
+      <a href="#installation" class="btn btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Installation
+      </a>
+    </div>
+
+    <div class="badges">
+      <span class="badge badge-gold">🎓 PFE Licence</span>
+      <span class="badge badge-blue">🔐 Signature Numérique</span>
+      <span class="badge badge-green">✅ Vérification Publique</span>
+      <span class="badge badge-purple">⚡ React + Node.js</span>
+      <span class="badge badge-green">🗄️ PostgreSQL</span>
+      <span class="badge badge-blue">📱 QR Code</span>
+      <span class="badge badge-red">🛡️ Anti-Fraude</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- PROBLEMATIQUE -->
+  <div class="section reveal">
+    <div class="section-label">Contexte</div>
+    <h2 class="section-title">🚨 Problématique</h2>
+    <div class="section-body">
+      <p>Dans de nombreux pays, notamment au Cameroun, de faux communiqués attribués à des institutions publiques circulent fréquemment sur les plateformes comme <strong>WhatsApp, Facebook ou Telegram</strong>. Il n'existe pas encore de mécanisme simple permettant aux citoyens de vérifier l'authenticité d'un document officiel.</p>
+    </div>
+    <div class="problem-card" style="margin-top:20px;">
+      <div style="font-size:13px;color:var(--red);font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Impacts des faux communiqués</div>
+      <div class="problem-items">
+        <div class="problem-item">
+          <span class="icon">⚠️</span>
+          <span>Induire les citoyens en erreur</span>
+        </div>
+        <div class="problem-item">
+          <span class="icon">📡</span>
+          <span>Provoquer la désinformation</span>
+        </div>
+        <div class="problem-item">
+          <span class="icon">😕</span>
+          <span>Créer de la confusion au sein des populations</span>
+        </div>
+        <div class="problem-item">
+          <span class="icon">🏛️</span>
+          <span>Nuire à la crédibilité des institutions</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBJECTIFS -->
+  <div class="section reveal">
+    <div class="section-label">Objectifs</div>
+    <h2 class="section-title">🎯 Objectifs du projet</h2>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-left">
+          <div class="flow-num">1</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-content">
+          <strong>Signature numérique des communiqués</strong>
+          <p>Permettre aux institutions gouvernementales de signer numériquement leurs publications officielles.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-left">
+          <div class="flow-num">2</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-content">
+          <strong>Intégrité et authenticité documentaire</strong>
+          <p>Garantir que chaque document publié est authentique et n'a pas été altéré.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-left">
+          <div class="flow-num">3</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-content">
+          <strong>Vérification publique accessible</strong>
+          <p>Offrir aux citoyens un moyen simple de vérifier l'authenticité d'un communiqué sans créer de compte.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-left">
+          <div class="flow-num">4</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-content">
+          <strong>Base de données publique</strong>
+          <p>Créer un registre public archivant tous les communiqués officiels signés.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-left">
+          <div class="flow-num">5</div>
+        </div>
+        <div class="flow-content">
+          <strong>Lutte contre la désinformation</strong>
+          <p>Contribuer activement à la lutte contre la prolifération des faux documents institutionnels.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- FONCTIONNALITES -->
+  <div id="fonctionnalites" class="section reveal">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">⚙️ Fonctionnalités principales</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon blue">🔐</div>
+        <div class="feature-name">Authentification sécurisée</div>
+        <div class="feature-desc">Comptes institutionnels protégés avec 2FA et expiration automatique des sessions.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon purple">✍️</div>
+        <div class="feature-name">Signature numérique</div>
+        <div class="feature-desc">Signature cryptographique des communiqués officiels pour en garantir l'intégrité.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon green">🗄️</div>
+        <div class="feature-name">Archivage sécurisé</div>
+        <div class="feature-desc">Stockage immuable et horodaté de tous les documents signés par les institutions.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon gold">📱</div>
+        <div class="feature-name">Vérification QR Code</div>
+        <div class="feature-desc">Chaque communiqué génère un QR Code unique pour une vérification instantanée.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon blue">🔍</div>
+        <div class="feature-name">Moteur de recherche</div>
+        <div class="feature-desc">Recherche full-text des communiqués par mots-clés, institution ou date.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon green">🌐</div>
+        <div class="feature-name">Accès public libre</div>
+        <div class="feature-desc">Les citoyens accèdent aux fonctions de vérification sans création de compte.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXEMPLE -->
+  <div class="section reveal">
+    <div class="section-label">Workflow</div>
+    <h2 class="section-title">📋 Exemple d'utilisation</h2>
+    <div class="qr-section">
+      <div class="qr-visual">
+        <svg width="120" height="120" viewBox="0 0 120 120" style="border:1px solid var(--border);border-radius:12px;padding:8px;background:var(--surface)">
+          <!-- QR Code stylisé -->
+          <rect fill="var(--surface2)" width="120" height="120" rx="4"/>
+          <!-- Coins QR -->
+          <rect x="10" y="10" width="30" height="30" rx="3" fill="none" stroke="var(--accent2)" stroke-width="3"/>
+          <rect x="16" y="16" width="18" height="18" rx="1" fill="var(--accent2)"/>
+          <rect x="80" y="10" width="30" height="30" rx="3" fill="none" stroke="var(--accent2)" stroke-width="3"/>
+          <rect x="86" y="16" width="18" height="18" rx="1" fill="var(--accent2)"/>
+          <rect x="10" y="80" width="30" height="30" rx="3" fill="none" stroke="var(--accent2)" stroke-width="3"/>
+          <rect x="16" y="86" width="18" height="18" rx="1" fill="var(--accent2)"/>
+          <!-- Modules QR aléatoires -->
+          <rect x="52" y="10" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.7"/>
+          <rect x="62" y="10" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.5"/>
+          <rect x="52" y="20" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.9"/>
+          <rect x="72" y="52" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.6"/>
+          <rect x="52" y="52" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.8"/>
+          <rect x="62" y="62" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.5"/>
+          <rect x="80" y="62" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.7"/>
+          <rect x="90" y="72" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.9"/>
+          <rect x="52" y="80" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.6"/>
+          <rect x="72" y="90" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.4"/>
+          <rect x="100" y="52" width="8" height="8" rx="1" fill="var(--accent3)" opacity="0.8"/>
+          <text x="60" y="115" text-anchor="middle" font-size="9" fill="var(--text3)" font-family="monospace">AUTH-2025-001</text>
+        </svg>
+      </div>
+      <div class="qr-text">
+        <ol style="list-style:none;display:flex;flex-direction:column;gap:12px;">
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--text2);">
+            <span style="color:var(--accent2);font-weight:700;min-width:22px;">01.</span>
+            Une institution publie un communiqué sur la plateforme.
+          </li>
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--text2);">
+            <span style="color:var(--accent2);font-weight:700;min-width:22px;">02.</span>
+            Le document est signé numériquement et archivé de façon immuable.
+          </li>
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--text2);">
+            <span style="color:var(--accent2);font-weight:700;min-width:22px;">03.</span>
+            Un <code>QR Code</code> et un <code>identifiant unique</code> sont générés automatiquement.
+          </li>
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--text2);">
+            <span style="color:var(--accent2);font-weight:700;min-width:22px;">04.</span>
+            Les citoyens scannent le QR Code ou recherchent le document pour vérifier son authenticité.
+          </li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ARCHITECTURE -->
+  <div class="section reveal">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">🏗️ Stack technique</h2>
+    <div class="stack-grid">
+      <div class="stack-group">
+        <div class="stack-group-title">⚛️ Frontend</div>
+        <div class="stack-items">
+          <div class="stack-item"><span class="tech-dot td-cyan"></span>React.js</div>
+          <div class="stack-item"><span class="tech-dot td-blue"></span>JavaScript (ES6+)</div>
+          <div class="stack-item"><span class="tech-dot td-purple"></span>CSS3 / HTML5</div>
+        </div>
+      </div>
+      <div class="stack-group">
+        <div class="stack-group-title">🟢 Backend</div>
+        <div class="stack-items">
+          <div class="stack-item"><span class="tech-dot td-green"></span>Express.js</div>
+          <div class="stack-item"><span class="tech-dot td-green"></span>Node.js</div>
+          <div class="stack-item"><span class="tech-dot td-gold"></span>REST API</div>
+        </div>
+      </div>
+      <div class="stack-group">
+        <div class="stack-group-title">🗄️ Base de données</div>
+        <div class="stack-items">
+          <div class="stack-item"><span class="tech-dot td-blue"></span>PostgreSQL</div>
+          <div class="stack-item"><span class="tech-dot td-purple"></span>ORM / Migrations</div>
+        </div>
+      </div>
+      <div class="stack-group">
+        <div class="stack-group-title">🔒 Sécurité</div>
+        <div class="stack-items">
+          <div class="stack-item"><span class="tech-dot td-gold"></span>Signature numérique</div>
+          <div class="stack-item"><span class="tech-dot td-red"></span>HTTPS / SSL</div>
+          <div class="stack-item"><span class="tech-dot td-purple"></span>2FA Auth</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TYPES D'UTILISATEURS -->
+  <div class="section reveal">
+    <div class="section-label">Accès</div>
+    <h2 class="section-title">👥 Types d'utilisateurs</h2>
+    <div class="users-grid">
+      <div class="user-card">
+        <div class="user-card-header">
+          <div class="user-avatar ua-blue">🏛️</div>
+          <div>
+            <div class="user-card-title">Institutions</div>
+            <div style="font-size:12px;color:var(--text3);">Ministères & organismes publics</div>
+          </div>
+        </div>
+        <div class="user-cap"><span class="cap-check">✓</span> Publier des communiqués officiels</div>
+        <div class="user-cap"><span class="cap-check">✓</span> Signer numériquement les documents</div>
+        <div class="user-cap"><span class="cap-check">✓</span> Archiver les publications</div>
+        <div class="user-cap"><span class="cap-lock">🔒</span> Compte requis avec 2FA</div>
+      </div>
+      <div class="user-card">
+        <div class="user-card-header">
+          <div class="user-avatar ua-green">🌍</div>
+          <div>
+            <div class="user-card-title">Utilisateurs Publics</div>
+            <div style="font-size:12px;color:var(--text3);">Citoyens, journalistes, organisations</div>
+          </div>
+        </div>
+        <div class="user-cap"><span class="cap-check">✓</span> Rechercher des communiqués officiels</div>
+        <div class="user-cap"><span class="cap-check">✓</span> Vérifier l'authenticité d'un document</div>
+        <div class="user-cap"><span class="cap-check">✓</span> Scanner un QR Code de vérification</div>
+        <div class="user-cap" style="color:var(--green2);"><span style="color:var(--green2);">✓</span> <strong style="color:var(--green2);font-size:13px;">Aucun compte nécessaire</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- INSTALLATION -->
+  <div id="installation" class="section reveal">
+    <div class="section-label">Setup</div>
+    <h2 class="section-title">🚀 Installation</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-dot cd-red"></span>
+        <span class="code-dot cd-gold"></span>
+        <span class="code-dot cd-green"></span>
+        <span class="code-label">bash — cloner le dépôt</span>
+      </div>
+      <div class="code-body">
+<span class="cm"># 1. Cloner le dépôt</span>
+<span class="kw">git</span> <span class="fn">clone</span> <span class="str">https://github.com/your-repository/authenticom.git</span>
+
+<span class="cm"># 2. Accéder au projet</span>
+<span class="kw">cd</span> authenticom
+
+<span class="cm"># 3. Installer les dépendances (backend)</span>
+<span class="kw">cd</span> backend <span class="op">&&</span> <span class="fn">npm</span> install
+
+<span class="cm"># 4. Installer les dépendances (frontend)</span>
+<span class="kw">cd</span> ../frontend <span class="op">&&</span> <span class="fn">npm</span> install
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding:16px 20px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:12px;font-size:13.5px;color:var(--text2);">
+      <strong style="color:var(--green2);">💡 Prérequis :</strong> Node.js ≥ 18, PostgreSQL ≥ 14, npm ≥ 9
+    </div>
+
+    <h3 style="font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:600;margin:28px 0 12px;">Structure du dépôt</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-dot cd-red"></span>
+        <span class="code-dot cd-gold"></span>
+        <span class="code-dot cd-green"></span>
+        <span class="code-label">structure du projet</span>
+      </div>
+      <div class="code-body">
+authenticom/
+<span class="kw">├── frontend/</span>        <span class="cm"># Application React.js</span>
+<span class="kw">├── backend/</span>         <span class="cm"># API Express.js</span>
+<span class="kw">├── database/</span>        <span class="cm"># Migrations & schémas PostgreSQL</span>
+<span class="kw">├── docs/</span>            <span class="cm"># Documentation technique</span>
+<span class="kw">├── security/</span>        <span class="cm"># Modules de signature numérique</span>
+<span class="kw">└── tests/</span>           <span class="cm"># Tests unitaires & intégration</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECURITE -->
+  <div class="section reveal">
+    <div class="section-label">Sécurité</div>
+    <h2 class="section-title">🛡️ Considérations de sécurité</h2>
+    <div class="security-grid">
+      <div class="security-item">
+        <div class="si-icon">🔑</div>
+        <div class="si-title">Authentification</div>
+        <div class="si-desc">2FA obligatoire, sessions à expiration automatique</div>
+      </div>
+      <div class="security-item">
+        <div class="si-icon">✅</div>
+        <div class="si-title">Intégrité des données</div>
+        <div class="si-desc">Hachage cryptographique de chaque document signé</div>
+      </div>
+      <div class="security-item">
+        <div class="si-icon">📁</div>
+        <div class="si-title">Gestion des fichiers</div>
+        <div class="si-desc">Validation stricte des types et des tailles de fichiers</div>
+      </div>
+      <div class="security-item">
+        <div class="si-icon">🧱</div>
+        <div class="si-title">Anti-injection SQL</div>
+        <div class="si-desc">Requêtes paramétrées, ORM, validation des entrées</div>
+      </div>
+      <div class="security-item">
+        <div class="si-icon">🕵️</div>
+        <div class="si-title">Protection XSS</div>
+        <div class="si-desc">Sanitisation des sorties, CSP headers, DOMPurify</div>
+      </div>
+      <div class="security-item">
+        <div class="si-icon">🌐</div>
+        <div class="si-title">HTTPS / SSL</div>
+        <div class="si-desc">Certificat SSL obligatoire, HSTS activé</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTRIBUTION -->
+  <div class="section reveal">
+    <div class="section-label">Contribution</div>
+    <h2 class="section-title">🤝 Comment contribuer</h2>
+    <div class="contrib-steps">
+      <div class="contrib-step">
+        <div class="contrib-num">01</div>
+        <div class="contrib-text">
+          <strong>Créer une branche</strong>
+          Une branche dédiée par fonctionnalité
+        </div>
+      </div>
+      <div class="contrib-step">
+        <div class="contrib-num">02</div>
+        <div class="contrib-text">
+          <strong>Commits clairs</strong>
+          Messages de commit descriptifs et concis
+        </div>
+      </div>
+      <div class="contrib-step">
+        <div class="contrib-num">03</div>
+        <div class="contrib-text">
+          <strong>Documenter</strong>
+          Toute nouvelle fonctionnalité doit être documentée
+        </div>
+      </div>
+      <div class="contrib-step">
+        <div class="contrib-num">04</div>
+        <div class="contrib-text">
+          <strong>Tester</strong>
+          Tests validés avant chaque pull request
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block" style="margin-top:20px;">
+      <div class="code-header">
+        <span class="code-dot cd-red"></span>
+        <span class="code-dot cd-gold"></span>
+        <span class="code-dot cd-green"></span>
+        <span class="code-label">git workflow</span>
+      </div>
+      <div class="code-body">
+<span class="cm"># Créer une branche pour la fonctionnalité</span>
+<span class="kw">git</span> checkout <span class="op">-b</span> <span class="str">feature/signature-numerique</span>
+
+<span class="cm"># Committer les changements</span>
+<span class="kw">git</span> commit <span class="op">-m</span> <span class="str">"feat: Ajout du module de signature numérique"</span>
+
+<span class="cm"># Pousser la branche</span>
+<span class="kw">git</span> push origin <span class="str">feature/signature-numerique</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="section reveal">
+    <div class="section-label">Avancement</div>
+    <h2 class="section-title">📊 État du projet</h2>
+    <div class="status-card">
+      <div class="status-header">
+        <div class="status-label-group">
+          <span class="status-pulse"></span>
+          <span class="status-text">En développement actif</span>
+        </div>
+        <span class="version-tag">v0.1.0-alpha</span>
+      </div>
+      <div class="progress-list">
+        <div class="progress-row">
+          <div class="progress-label">
+            <span class="progress-name">🔐 Système d'authentification</span>
+            <span class="progress-pct">65%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill pf-blue" style="width:65%;animation-delay:0.1s;"></div>
+          </div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">
+            <span class="progress-name">✍️ Moteur de signature numérique</span>
+            <span class="progress-pct">40%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill pf-purple" style="width:40%;animation-delay:0.3s;"></div>
+          </div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">
+            <span class="progress-name">✅ Système de vérification</span>
+            <span class="progress-pct">30%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill pf-green" style="width:30%;animation-delay:0.5s;"></div>
+          </div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">
+            <span class="progress-name">🔍 Moteur de recherche</span>
+            <span class="progress-pct">20%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill pf-gold" style="width:20%;animation-delay:0.7s;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-logo">
+      <span class="gradient-text">AuthentiCom</span>
+    </div>
+    <p style="margin-bottom:8px;">Projet de Fin d'Études · Licence en Informatique / Génie Logiciel</p>
+    <p>Développé avec ❤️ pour lutter contre la fraude documentaire institutionnelle</p>
+    <p style="margin-top:16px;font-size:12px;">
+      <a href="https://github.com/your-repository/authenticom">GitHub</a> ·
+      <span>React + Express + PostgreSQL</span>
+    </p>
+  </div>
+
+</div>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

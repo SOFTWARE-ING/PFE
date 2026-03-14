@@ -70,7 +70,7 @@
   @keyframes progressFill {
     from { width: 0; }
   }
-  @keyframes rotateShield {
+  @keyframes rotate {
     0%   { transform: rotateY(0deg); }
     50%  { transform: rotateY(15deg); }
     100% { transform: rotateY(0deg); }
@@ -181,7 +181,7 @@
     margin-right: auto;
   }
 
-  .hero-shield {
+  .hero- {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -190,11 +190,11 @@
     position: relative;
     animation: float 4s ease-in-out infinite;
   }
-  .hero-shield svg {
-    animation: rotateShield 6s ease-in-out infinite;
+  .hero- svg {
+    animation: rotate 6s ease-in-out infinite;
     filter: drop-shadow(0 0 20px rgba(59,130,246,0.4));
   }
-  .hero-shield::before {
+  .hero-::before {
     content: '';
     position: absolute; inset: -12px;
     border-radius: 50%;
@@ -826,7 +826,7 @@
 
   <!-- HERO -->
   <div class="hero">
-    <div class="hero-shield">
+    <div class="hero-">
       <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
         <path d="M40 8L14 18V38C14 53.5 25.5 67.8 40 72C54.5 67.8 66 53.5 66 38V18L40 8Z"
               fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.6)" stroke-width="1.5"/>
@@ -842,14 +842,14 @@
     </div>
 
     <h1 class="hero-title">
-      <span class="gradient-text">Shield/span>
+      <span class="gradient-text"></span>
     </h1>
     <p class="hero-subtitle">
      CONCEPTION D’UNE PLATEFORME SÉCURISÉE DE VALIDATION DES COMMUNIQUÉS OFFICIELS PAR SIGNATURE NUMÉRIQUE CONTRE LA FRAUDE DOCUMENTAIRE INSTITUTIONNELLE
     </p>
 
     <div class="btn-group">
-      <a href="https://github.com/your-repository/authenticom" class="btn btn-primary">
+      <a href="https://github.com/your-repository/Shield" class="btn btn-primary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         Voir sur GitHub
       </a>
@@ -1148,10 +1148,10 @@
       </div>
       <div class="code-body">
 <span class="cm"># 1. Cloner le dépôt</span>
-<span class="kw">git</span> <span class="fn">clone</span> <span class="str">https://github.com/your-repository/authenticom.git</span>
+<span class="kw">git</span> <span class="fn">clone</span> <span class="str">https://github.com/your-repository/Shield.git</span>
 
 <span class="cm"># 2. Accéder au projet</span>
-<span class="kw">cd</span> authenticom
+<span class="kw">cd</span> Shield
 
 <span class="cm"># 3. Installer les dépendances (backend)</span>
 <span class="kw">cd</span> backend <span class="op">&&</span> <span class="fn">npm</span> install
@@ -1174,7 +1174,7 @@
         <span class="code-label">structure du projet</span>
       </div>
       <div class="code-body">
-authenticom/
+Shield/
 <span class="kw">├── frontend/</span>        <span class="cm"># Application React.js</span>
 <span class="kw">├── backend/</span>         <span class="cm"># API Express.js</span>
 <span class="kw">├── database/</span>        <span class="cm"># Migrations & schémas PostgreSQL</span>
@@ -1336,12 +1336,12 @@ authenticom/
   <!-- FOOTER -->
   <div class="footer">
     <div class="footer-logo">
-      <span class="gradient-text">AuthentiCom</span>
+      <span class="gradient-text">Shield</span>
     </div>
     <p style="margin-bottom:8px;">Projet de Fin d'Études · Licence en Informatique / Génie Logiciel</p>
     <p>Développé avec ❤️ pour lutter contre la fraude documentaire institutionnelle</p>
     <p style="margin-top:16px;font-size:12px;">
-      <a href="https://github.com/your-repository/authenticom">GitHub</a> ·
+      <a href="https://github.com/your-repository/Shield">GitHub</a> ·
       <span>React + Express + PostgreSQL</span>
     </p>
   </div>

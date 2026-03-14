@@ -23,7 +23,7 @@ Ces documents falsifiés peuvent :
 
 Actuellement, il n’existe pas toujours un moyen simple et rapide permettant aux citoyens de vérifier l’authenticité d’un communiqué officiel.
 
-La plateforme AuthentiCom vise à résoudre ce problème en mettant en place un système permettant de signer numériquement les communiqués officiels et de les vérifier publiquement.
+La plateforme Shield vise à résoudre ce problème en mettant en place un système permettant de signer numériquement les communiqués officiels et de les vérifier publiquement.
 
 ---
 
@@ -133,13 +133,13 @@ tests/
 Cloner le dépôt :
 
 ```bash id="readme_clone"
-git clone https://github.com/your-repository/authenticom.git
+git clone https://github.com/your-repository/Shield.git
 ```
 
 Se placer dans le dossier du projet :
 
 ```bash id="readme_cd"
-cd authenticom
+cd Shield
 ```
 
 ## Contribution

@@ -168,8 +168,7 @@ git push origin feature/ma-fonctionnalite
 
 ---
 
-
-# 🚀 Backend API - FastAPI
+# 🛡️ Shield — Backend API - FastAPI
 
 ## 📌 Description
 
@@ -226,3 +225,4 @@ uvicorn main:app --reload
 * sqlalchemy → ORM
 * psycopg2-binary → PostgreSQL
 * python-dotenv → variables d'environnement
+

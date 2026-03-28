@@ -1,11 +1,59 @@
-# PFE/Mobie_app
-Cette branche est exclusivement reserver au developement de la partie mobile de ce prjets
-## comme fontionaliter cle de lapplication mobile nous avons:
-### la verification d'un communiques via:
-- Scan du document physique
-- Upload du document sous la forme pdf
-### la recherche d'un communiques archivee via:
-- nom du communiquer
-- noms du ministere en question
-- ou via les mots cles du communiquer unique
-### le telechargements d'un communiquer archiver
+# PFE
+Signature numerique, Authentification , QRcode, Scan...
+# 🚀 Backend API - FastAPI
+
+## 📌 Description
+
+API backend du projet PFE développée avec FastAPI.
+
+---
+
+## ⚙️ Installation
+
+### 1. Cloner le projet
+
+```bash
+git clone git@github.com:SOFTWARE-ING/PFE.git
+cd backend
+```
+
+### 2. Créer un environnement virtuel
+
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+### 3. Installer les dépendances
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## ▶️ Lancer le serveur
+
+```bash
+uvicorn app.main:app --reload
+ou faire:
+cd app
+uvicorn main:app --reload
+```
+
+---
+
+## 📚 Documentation API
+
+* Swagger : http://127.0.0.1:8000/docs
+* ReDoc : http://127.0.0.1:8000/redoc
+
+---
+
+## 📦 Dépendances
+
+* fastapi → framework API
+* uvicorn → serveur
+* sqlalchemy → ORM
+* psycopg2-binary → PostgreSQL
+* python-dotenv → variables d'environnement

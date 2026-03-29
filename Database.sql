@@ -117,7 +117,20 @@ CREATE TABLE consultation_citoyen_communique (
     CONSTRAINT fk_consultation_communique FOREIGN KEY (id_communique) 
         REFERENCES communique(id_communique) ON DELETE CASCADE
 );
+-- Table de pour gere lauthentification a double facteurs (2FA)
+CREATE TABLE auth_otp (
+    id_otp VARCHAR(36) PRIMARY KEY,
+    id_utilisateur VARCHAR(36) NOT NULL,
+    code_otp VARCHAR(10) NOT NULL,
+    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_expiration TIMESTAMP NOT NULL,
+    est_utilise BOOLEAN DEFAULT FALSE,
 
+    CONSTRAINT fk_otp_utilisateur 
+        FOREIGN KEY (id_utilisateur)
+        REFERENCES utilisateur(id_utilisateur)
+        ON DELETE CASCADE
+);
 -- ==============================================================================
 -- 5. INDEXATION COMPLÈTE POUR OPTIMISATION DES PERFORMANCES
 -- ==============================================================================
@@ -185,6 +198,10 @@ CREATE INDEX idx_consultation_communique ON consultation_citoyen_communique(id_c
 CREATE INDEX idx_consultation_date ON consultation_citoyen_communique(date_consultation);
 CREATE INDEX idx_consultation_citoyen_date ON consultation_citoyen_communique(id_utilisateur, date_consultation);
 CREATE INDEX idx_consultation_communique_date ON consultation_citoyen_communique(id_communique, date_consultation);
+
+-- Index pour la table auth_otp
+CREATE INDEX idx_otp_user ON auth_otp(id_utilisateur);
+CREATE INDEX idx_otp_expiration ON auth_otp(date_expiration);
 
 -- ==============================================================================
 -- 6. INDEX SPÉCIFIQUES POUR RECHERCHES TEXTUELLES AVANCÉES

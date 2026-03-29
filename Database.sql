@@ -526,3 +526,203 @@ LEFT JOIN logs_securite l ON u.id_utilisateur = l.id_utilisateur
 GROUP BY u.id_utilisateur, u.nom, u.prenom, u.email
 ORDER BY derniere_action DESC NULLS LAST
 LIMIT 20;
+
+
+-- ============================================================
+-- PROCEDURE : LOGIN AGENT + GENERATION OTP
+-- ============================================================
+CREATE OR REPLACE FUNCTION login_agent(
+    p_email VARCHAR,
+    p_password VARCHAR
+)
+RETURNS TABLE(
+    success BOOLEAN,
+    message TEXT,
+    id_user VARCHAR
+)
+AS $$
+DECLARE
+    v_user utilisateur%ROWTYPE;
+BEGIN
+    SELECT * INTO v_user
+    FROM utilisateur
+    WHERE email = p_email;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, 'Utilisateur non trouvé', NULL;
+        RETURN;
+    END IF;
+
+    IF crypt(p_password, v_user.mot_de_passe) = v_user.mot_de_passe THEN
+
+        INSERT INTO auth_otp(
+            id_utilisateur,
+            code_otp,
+            date_expiration
+        )
+        VALUES(
+            v_user.id_utilisateur,
+            FLOOR(RANDOM() * 900000 + 100000)::TEXT,
+            NOW() + INTERVAL '5 minutes'
+        );
+
+        RETURN QUERY SELECT TRUE, 'OTP envoyé', v_user.id_utilisateur;
+    ELSE
+        RETURN QUERY SELECT FALSE, 'Mot de passe incorrect', NULL;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : VERIFICATION OTP (2FA)
+-- ============================================================
+CREATE OR REPLACE FUNCTION verify_otp(
+    p_user_id VARCHAR,
+    p_code VARCHAR
+)
+RETURNS TABLE(
+    success BOOLEAN,
+    message TEXT
+)
+AS $$
+DECLARE
+    v_otp RECORD;
+BEGIN
+    SELECT * INTO v_otp
+    FROM auth_otp
+    WHERE id_utilisateur = p_user_id
+    AND code_otp = p_code
+    AND est_utilise = FALSE
+    ORDER BY date_expiration DESC
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, 'Code invalide';
+        RETURN;
+    END IF;
+
+    IF v_otp.date_expiration < NOW() THEN
+        RETURN QUERY SELECT FALSE, 'Code expiré';
+        RETURN;
+    END IF;
+
+    UPDATE auth_otp
+    SET est_utilise = TRUE
+    WHERE id_otp = v_otp.id_otp;
+
+    RETURN QUERY SELECT TRUE, 'Authentification réussie';
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : CREATION UTILISATEUR
+-- ============================================================
+CREATE OR REPLACE FUNCTION create_user(
+    p_nom VARCHAR,
+    p_prenom VARCHAR,
+    p_email VARCHAR,
+    p_password VARCHAR
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    INSERT INTO utilisateur(
+        id_utilisateur,
+        nom,
+        prenom,
+        email,
+        mot_de_passe
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_nom,
+        p_prenom,
+        p_email,
+        crypt(p_password, gen_salt('bf'))
+    );
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : CREATION COMMUNIQUE
+-- ============================================================
+CREATE OR REPLACE FUNCTION create_communique(
+    p_titre TEXT,
+    p_contenu TEXT
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    INSERT INTO communique(
+        id_communique,
+        titre,
+        contenu,
+        hash_contenu
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_titre,
+        p_contenu,
+        encode(digest(p_contenu, 'sha256'), 'hex')
+    );
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : SIGNATURE COMMUNIQUE
+-- ============================================================
+CREATE OR REPLACE FUNCTION signer_communique(
+    p_id_communique VARCHAR,
+    p_id_agent VARCHAR,
+    p_signature TEXT
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    INSERT INTO signature(
+        id_signature,
+        id_communique,
+        id_agent_officiel,
+        valeur_signature,
+        algorithme_hachage
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_id_communique,
+        p_id_agent,
+        p_signature,
+        'SHA256'
+    );
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : LOGGING SECURITE
+-- ============================================================
+CREATE OR REPLACE FUNCTION log_action(
+    p_user VARCHAR,
+    p_action TEXT,
+    p_succes BOOLEAN,
+    p_details TEXT
+)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO logs_securite(
+        id_log,
+        id_utilisateur,
+        type_action,
+        succes,
+        details
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_user,
+        p_action,
+        p_succes,
+        p_details
+    );
+END;
+$$ LANGUAGE plpgsql;

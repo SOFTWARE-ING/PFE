@@ -8,7 +8,7 @@ TEMPLATE=template0;
 -- 1. CRÉATION DE LA TABLE MÈRE
 -- ==============================================================================
 CREATE TABLE utilisateur (
-    id_utilisateur VARCHAR(36) PRIMARY KEY,
+    id_utilisateur VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,    
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
@@ -30,6 +30,7 @@ CREATE TABLE agent_officiel (
 );
 
 CREATE TABLE administrateur (
+
     id_utilisateur VARCHAR(36) PRIMARY KEY,
     niveau_habilitation VARCHAR(50) NOT NULL,
     CONSTRAINT fk_admin_utilisateur FOREIGN KEY (id_utilisateur) 
@@ -71,7 +72,7 @@ CREATE TABLE archive (
 -- 4. ENTITÉS DÉPENDANTES (ASSOCIATIONS 1:N et M:N)
 -- ==============================================================================
 CREATE TABLE logs_securite (
-    id_log VARCHAR(36) PRIMARY KEY,
+    id_log VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_utilisateur VARCHAR(36) NOT NULL,
     type_action VARCHAR(100) NOT NULL,
     date_action TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -82,7 +83,7 @@ CREATE TABLE logs_securite (
 );
 
 CREATE TABLE cle_cryptographique (
-    id_cle VARCHAR(36) PRIMARY KEY,
+    id_cle VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_agent_officiel VARCHAR(36) NOT NULL,
     cle_publique TEXT NOT NULL,
     cle_privee_chiffree TEXT NOT NULL,
@@ -93,7 +94,7 @@ CREATE TABLE cle_cryptographique (
 );
 
 CREATE TABLE signature (
-    id_signature VARCHAR(36) PRIMARY KEY,
+    id_signature VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_communique VARCHAR(36) NOT NULL,
     id_agent_officiel VARCHAR(36) NOT NULL,
     valeur_signature TEXT NOT NULL,

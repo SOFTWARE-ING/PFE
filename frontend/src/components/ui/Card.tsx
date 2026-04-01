@@ -1,12 +1,16 @@
 import React from "react";
 
-interface CardProps {
-  children: React.ReactNode;
-}
-
-const Card: React.FC<CardProps> = ({ children }) => {
+const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <div className="bg-white shadow-lg rounded-2xl p-6 w-full max-w-md">
+    <div
+      className="
+      w-full max-w-md p-6 rounded-2xl shadow-lg
+      bg-white text-gray-900
+      dark:bg-gray-800 dark:text-white
+      transition-colors duration-300
+    "
+    >
+        
       {children}
     </div>
   );

@@ -1,14 +1,18 @@
 import React from "react";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+const Button: React.FC<{
   children: React.ReactNode;
-}
-
-const Button: React.FC<ButtonProps> = ({ children, ...props }) => {
+  type?: "button" | "submit";
+}> = ({ children, type = "button" }) => {
   return (
     <button
-      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl transition"
-      {...props}
+      type={type}
+      className="
+      w-full py-2 rounded-lg font-medium
+      bg-blue-600 text-white
+      hover:bg-blue-700
+      transition
+    "
     >
       {children}
     </button>

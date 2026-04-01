@@ -1,27 +1,54 @@
-import React from "react";
-import type { LucideIcon } from "lucide-react";
+import React, { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  icon?: LucideIcon;
+interface Props {
+  label: string;
+  name: string;
+  type?: string;
+  placeholder?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const Input: React.FC<InputProps> = ({ label, icon: Icon, ...props }) => {
-  return (
-    <div className="w-full">
-      {label && (
-        <label className="block mb-2 text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
+const Input: React.FC<Props> = ({
+  label,
+  name,
+  type = "text",
+  placeholder,
+  onChange,
+}) => {
+  const [show, setShow] = useState(false);
 
-      <div className="flex items-center border rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500">
-        {Icon && <Icon className="w-5 h-5 text-gray-400 mr-2" />}
-        <input
-          className="w-full outline-none bg-transparent"
-          {...props}
-        />
-      </div>
+  const isPassword = type === "password";
+
+  return (
+    <div className="relative">
+      <label className="block mb-1 text-sm font-medium">
+        {label}
+      </label>
+
+      <input
+        name={name}
+        type={isPassword && show ? "text" : type}
+        placeholder={placeholder}
+        onChange={onChange}
+        className="
+        w-full px-4 py-2 rounded-lg border
+        bg-white text-gray-900 border-gray-300
+        dark:bg-gray-800 dark:text-white dark:border-gray-600
+        focus:outline-none focus:ring-2 focus:ring-blue-500
+        transition
+      "
+      />
+
+      {isPassword && (
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          className="absolute right-3 top-9 text-gray-500 dark:text-gray-300"
+        >
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      )}
     </div>
   );
 };

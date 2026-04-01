@@ -40,11 +40,11 @@ const OTP: React.FC = () => {
   return (
     <AuthLayout>
       <Card>
-        <h2 className="text-xl font-bold text-center mb-4">
+        <h2 className="text-xl font-bold text-center mb-4 text-gray-900 dark:text-white">
           Vérification 2FA
         </h2>
 
-        <p className="text-sm text-gray-500 text-center mb-6">
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
           Code envoyé par email (expire en 5 minutes)
         </p>
 
@@ -61,7 +61,7 @@ const OTP: React.FC = () => {
                 value={digit}
                 onChange={(e) => handleChange(e.target.value, index)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
-                className="w-12 h-12 text-center border rounded-xl text-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-12 h-12 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl text-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
             ))}
           </div>

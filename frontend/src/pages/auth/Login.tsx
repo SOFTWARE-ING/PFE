@@ -3,14 +3,12 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import AuthLayout from "../../components/layout/AuthLayout";
-import { Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { LoginFormData } from "../../types";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState<LoginFormData>({
+  const [form, setForm] = useState({
     email: "",
     password: "",
   });
@@ -19,10 +17,10 @@ const Login: React.FC = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 🔥 Simulation backend success
+    // simulate backend
     navigate("/otp");
   };
 
@@ -38,7 +36,6 @@ const Login: React.FC = () => {
             label="Email"
             name="email"
             type="email"
-            icon={Mail}
             placeholder="exemple@gouv.sn"
             onChange={handleChange}
           />
@@ -47,7 +44,6 @@ const Login: React.FC = () => {
             label="Mot de passe"
             name="password"
             type="password"
-            icon={Lock}
             placeholder="********"
             onChange={handleChange}
           />

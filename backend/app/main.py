@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from app.routes import user
+from all_routers import router as all_routers
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="API Magistral",
@@ -7,8 +8,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
-app.include_router(user.router)
+
+# Configuration CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(all_routers, prefix="/api")
 
 @app.get("/")
-def root():
-    return {"message": "API is running"}
+async def root():
+    return {
+        "message": "API OCR Service",
+        "endpoints": {
+            "ocr_extract": "/ocr/extract (POST)",
+            "docs": "/docs (GET)"
+        }
+    }

@@ -4,6 +4,14 @@ LC_COLLATE='fr_FR.utf8'
 LC_CTYPE='fr_FR.utf8'
 TEMPLATE=template0;
 
+-- Creation  d'un schemas independant de public(shemas par defaut)
+CREATE SCHEMA IF NOT EXISTS signature_communiques_officiels;
+
+-- Se conecter dessus
+SET search_path TO signature_communiques_officiels;
+
+
+
 -- =========================================================================
 -- 1. CRÉATION DE LA TABLE MÈRE
 -- ==============================================================================

@@ -4,11 +4,19 @@ LC_COLLATE='fr_FR.utf8'
 LC_CTYPE='fr_FR.utf8'
 TEMPLATE=template0;
 
+-- Creation  d'un schemas independant de public(shemas par defaut)
+CREATE SCHEMA IF NOT EXISTS signature_communiques_officiels;
+
+-- Se conecter dessus
+SET search_path TO signature_communiques_officiels;
+
+
+
 -- =========================================================================
 -- 1. CRÉATION DE LA TABLE MÈRE
 -- ==============================================================================
 CREATE TABLE utilisateur (
-    id_utilisateur VARCHAR(36) PRIMARY KEY,
+    id_utilisateur VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,    
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
@@ -30,6 +38,7 @@ CREATE TABLE agent_officiel (
 );
 
 CREATE TABLE administrateur (
+
     id_utilisateur VARCHAR(36) PRIMARY KEY,
     niveau_habilitation VARCHAR(50) NOT NULL,
     CONSTRAINT fk_admin_utilisateur FOREIGN KEY (id_utilisateur) 
@@ -71,7 +80,7 @@ CREATE TABLE archive (
 -- 4. ENTITÉS DÉPENDANTES (ASSOCIATIONS 1:N et M:N)
 -- ==============================================================================
 CREATE TABLE logs_securite (
-    id_log VARCHAR(36) PRIMARY KEY,
+    id_log VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_utilisateur VARCHAR(36) NOT NULL,
     type_action VARCHAR(100) NOT NULL,
     date_action TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -82,7 +91,7 @@ CREATE TABLE logs_securite (
 );
 
 CREATE TABLE cle_cryptographique (
-    id_cle VARCHAR(36) PRIMARY KEY,
+    id_cle VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_agent_officiel VARCHAR(36) NOT NULL,
     cle_publique TEXT NOT NULL,
     cle_privee_chiffree TEXT NOT NULL,
@@ -93,7 +102,7 @@ CREATE TABLE cle_cryptographique (
 );
 
 CREATE TABLE signature (
-    id_signature VARCHAR(36) PRIMARY KEY,
+    id_signature VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_communique VARCHAR(36) NOT NULL,
     id_agent_officiel VARCHAR(36) NOT NULL,
     valeur_signature TEXT NOT NULL,
@@ -117,7 +126,20 @@ CREATE TABLE consultation_citoyen_communique (
     CONSTRAINT fk_consultation_communique FOREIGN KEY (id_communique) 
         REFERENCES communique(id_communique) ON DELETE CASCADE
 );
+-- Table de pour gere lauthentification a double facteurs (2FA)
+CREATE TABLE auth_otp (
+    id_otp VARCHAR(36) PRIMARY KEY,
+    id_utilisateur VARCHAR(36) NOT NULL,
+    code_otp VARCHAR(10) NOT NULL,
+    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_expiration TIMESTAMP NOT NULL,
+    est_utilise BOOLEAN DEFAULT FALSE,
 
+    CONSTRAINT fk_otp_utilisateur 
+        FOREIGN KEY (id_utilisateur)
+        REFERENCES utilisateur(id_utilisateur)
+        ON DELETE CASCADE
+);
 -- ==============================================================================
 -- 5. INDEXATION COMPLÈTE POUR OPTIMISATION DES PERFORMANCES
 -- ==============================================================================
@@ -185,6 +207,10 @@ CREATE INDEX idx_consultation_communique ON consultation_citoyen_communique(id_c
 CREATE INDEX idx_consultation_date ON consultation_citoyen_communique(date_consultation);
 CREATE INDEX idx_consultation_citoyen_date ON consultation_citoyen_communique(id_utilisateur, date_consultation);
 CREATE INDEX idx_consultation_communique_date ON consultation_citoyen_communique(id_communique, date_consultation);
+
+-- Index pour la table auth_otp
+CREATE INDEX idx_otp_user ON auth_otp(id_utilisateur);
+CREATE INDEX idx_otp_expiration ON auth_otp(date_expiration);
 
 -- ==============================================================================
 -- 6. INDEX SPÉCIFIQUES POUR RECHERCHES TEXTUELLES AVANCÉES
@@ -509,3 +535,203 @@ LEFT JOIN logs_securite l ON u.id_utilisateur = l.id_utilisateur
 GROUP BY u.id_utilisateur, u.nom, u.prenom, u.email
 ORDER BY derniere_action DESC NULLS LAST
 LIMIT 20;
+
+
+-- ============================================================
+-- PROCEDURE : LOGIN AGENT + GENERATION OTP
+-- ============================================================
+CREATE OR REPLACE FUNCTION login_agent(
+    p_email VARCHAR,
+    p_password VARCHAR
+)
+RETURNS TABLE(
+    success BOOLEAN,
+    message TEXT,
+    id_user VARCHAR
+)
+AS $$
+DECLARE
+    v_user utilisateur%ROWTYPE;
+BEGIN
+    SELECT * INTO v_user
+    FROM utilisateur
+    WHERE email = p_email;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, 'Utilisateur non trouvé', NULL;
+        RETURN;
+    END IF;
+
+    IF crypt(p_password, v_user.mot_de_passe) = v_user.mot_de_passe THEN
+
+        INSERT INTO auth_otp(
+            id_utilisateur,
+            code_otp,
+            date_expiration
+        )
+        VALUES(
+            v_user.id_utilisateur,
+            FLOOR(RANDOM() * 900000 + 100000)::TEXT,
+            NOW() + INTERVAL '5 minutes'
+        );
+
+        RETURN QUERY SELECT TRUE, 'OTP envoyé', v_user.id_utilisateur;
+    ELSE
+        RETURN QUERY SELECT FALSE, 'Mot de passe incorrect', NULL;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : VERIFICATION OTP (2FA)
+-- ============================================================
+CREATE OR REPLACE FUNCTION verify_otp(
+    p_user_id VARCHAR,
+    p_code VARCHAR
+)
+RETURNS TABLE(
+    success BOOLEAN,
+    message TEXT
+)
+AS $$
+DECLARE
+    v_otp RECORD;
+BEGIN
+    SELECT * INTO v_otp
+    FROM auth_otp
+    WHERE id_utilisateur = p_user_id
+    AND code_otp = p_code
+    AND est_utilise = FALSE
+    ORDER BY date_expiration DESC
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, 'Code invalide';
+        RETURN;
+    END IF;
+
+    IF v_otp.date_expiration < NOW() THEN
+        RETURN QUERY SELECT FALSE, 'Code expiré';
+        RETURN;
+    END IF;
+
+    UPDATE auth_otp
+    SET est_utilise = TRUE
+    WHERE id_otp = v_otp.id_otp;
+
+    RETURN QUERY SELECT TRUE, 'Authentification réussie';
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : CREATION UTILISATEUR
+-- ============================================================
+CREATE OR REPLACE FUNCTION create_user(
+    p_nom VARCHAR,
+    p_prenom VARCHAR,
+    p_email VARCHAR,
+    p_password VARCHAR
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    INSERT INTO utilisateur(
+        id_utilisateur,
+        nom,
+        prenom,
+        email,
+        mot_de_passe
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_nom,
+        p_prenom,
+        p_email,
+        crypt(p_password, gen_salt('bf'))
+    );
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : CREATION COMMUNIQUE
+-- ============================================================
+CREATE OR REPLACE FUNCTION create_communique(
+    p_titre TEXT,
+    p_contenu TEXT
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    INSERT INTO communique(
+        id_communique,
+        titre,
+        contenu,
+        hash_contenu
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_titre,
+        p_contenu,
+        encode(digest(p_contenu, 'sha256'), 'hex')
+    );
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : SIGNATURE COMMUNIQUE
+-- ============================================================
+CREATE OR REPLACE FUNCTION signer_communique(
+    p_id_communique VARCHAR,
+    p_id_agent VARCHAR,
+    p_signature TEXT
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    INSERT INTO signature(
+        id_signature,
+        id_communique,
+        id_agent_officiel,
+        valeur_signature,
+        algorithme_hachage
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_id_communique,
+        p_id_agent,
+        p_signature,
+        'SHA256'
+    );
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- PROCEDURE : LOGGING SECURITE
+-- ============================================================
+CREATE OR REPLACE FUNCTION log_action(
+    p_user VARCHAR,
+    p_action TEXT,
+    p_succes BOOLEAN,
+    p_details TEXT
+)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO logs_securite(
+        id_log,
+        id_utilisateur,
+        type_action,
+        succes,
+        details
+    )
+    VALUES(
+        gen_random_uuid(),
+        p_user,
+        p_action,
+        p_succes,
+        p_details
+    );
+END;
+$$ LANGUAGE plpgsql;

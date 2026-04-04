@@ -33,7 +33,7 @@ class DatabaseConfig:
         host = os.getenv("DB_HOST", "localhost")
         port = os.getenv("DB_PORT", "5432")
         name = os.getenv("DB_NAME", "signature_communiques")
-        user = os.getenv("DB_USER", "postgres")
+        user = os.getenv("DB_USER", "magistral")
         password = os.getenv("DB_PASSWORD", "")
         
         # Format standard SQLAlchemy pour PostgreSQL
@@ -64,7 +64,7 @@ class SecurityConfig:
     BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
     
     # 2FA - OTP (One-Time Password)
-    OTP_EXPIRE_SECONDS = int(os.getenv("OTP_EXPIRE_SECONDS", "300"))  # 5 minutes
+    OTP_EXPIRE_SECONDS = int(os.getenv("OTP_EXPIRE_SECONDS", "30"))  # 1/2 minutes
     OTP_LENGTH = int(os.getenv("OTP_LENGTH", "6"))  # 6 chiffres
 
 

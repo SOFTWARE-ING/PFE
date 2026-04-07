@@ -1,16 +1,16 @@
-import React from "react";
-
+// =============================
+// File: src/components/ui/Card.tsx
+// =============================
 const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <div
-      className="
-      w-full max-w-md p-6 rounded-2xl shadow-lg
-      bg-white text-gray-900
-      dark:bg-gray-800 dark:text-white
-      transition-colors duration-300
-    "
-    >
-        
+    <div className="
+      bg-card-light dark:bg-card-dark
+      border border-border-light dark:border-border-dark
+      shadow-xl shadow-blue-500/5
+      backdrop-blur-md
+      rounded-2xl p-8 w-full max-w-md
+      transition-all duration-300
+    ">
       {children}
     </div>
   );

@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Eye, EyeOff } from "lucide-react";
 
 interface Props {
   label: string;
   name: string;
-  type?: string;
+  type: string;
+  icon?: LucideIcon;
   placeholder?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -12,43 +14,59 @@ interface Props {
 const Input: React.FC<Props> = ({
   label,
   name,
-  type = "text",
+  type,
+  icon: Icon,
   placeholder,
   onChange,
 }) => {
-  const [show, setShow] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isPassword = type === "password";
 
   return (
-    <div className="relative">
-      <label className="block mb-1 text-sm font-medium">
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-text-secondaryLight dark:text-text-secondaryDark">
         {label}
       </label>
 
-      <input
-        name={name}
-        type={isPassword && show ? "text" : type}
-        placeholder={placeholder}
-        onChange={onChange}
+      <div
         className="
-        w-full px-4 py-2 rounded-lg border
-        bg-white text-gray-900 border-gray-300
-        dark:bg-gray-800 dark:text-white dark:border-gray-600
-        focus:outline-none focus:ring-2 focus:ring-blue-500
+        flex items-center gap-3
+        px-4 py-3
+        rounded-xl
+        bg-white/80 dark:bg-slate-800/80
+        border border-border-light dark:border-border-dark
+        focus-within:ring-2 focus-within:ring-blue-500
         transition
       "
-      />
+      >
+        {Icon && (
+          <Icon size={18} className="text-gray-400 shrink-0" />
+        )}
 
-      {isPassword && (
-        <button
-          type="button"
-          onClick={() => setShow(!show)}
-          className="absolute right-3 top-9 text-gray-500 dark:text-gray-300"
-        >
-          {show ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
-      )}
+        <input
+          name={name}
+          type={isPassword ? (showPassword ? "text" : "password") : type}
+          placeholder={placeholder}
+          onChange={onChange}
+          className="
+            w-full bg-transparent outline-none
+            text-text-primaryLight dark:text-text-primaryDark
+            placeholder:text-gray-400
+          "
+        />
+
+        {/* 👁️ Password Toggle */}
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
     </div>
   );
 };

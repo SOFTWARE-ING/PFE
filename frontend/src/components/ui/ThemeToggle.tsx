@@ -1,33 +1,35 @@
-import React, { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+// =============================
+// File: src/components/ui/ThemeToggle.tsx
+// =============================
+import { Sun, Moon } from "lucide-react";
+import { useEffect, useState } from "react";
 
-const ThemeToggle: React.FC = () => {
-  const [dark, setDark] = useState(() => {
-    return localStorage.getItem("theme") === "dark";
-  });
+export default function ThemeToggle() {
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    const root = document.documentElement;
+    setDark(document.documentElement.classList.contains("dark"));
+  }, []);
 
-    if (dark) {
-      root.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
+  const toggle = () => {
+    const root = document.documentElement;
+    if (root.classList.contains("dark")) {
       root.classList.remove("dark");
       localStorage.setItem("theme", "light");
+      setDark(false);
+    } else {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+      setDark(true);
     }
-  }, [dark]);
+  };
 
   return (
     <button
-      onClick={() => setDark(!dark)}
-      className="absolute top-4 right-4 p-2 rounded-lg 
-      bg-gray-200 text-gray-800 
-      dark:bg-gray-700 dark:text-yellow-400 transition"
+      onClick={toggle}
+      className="p-2 rounded-xl border bg-white text-black dark:bg-gray-800 dark:text-white transition"
     >
       {dark ? <Sun size={18} /> : <Moon size={18} />}
     </button>
   );
-};
-
-export default ThemeToggle;
+}

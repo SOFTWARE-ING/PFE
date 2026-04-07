@@ -9,14 +9,18 @@ TRÈS SIMPLE : chaque variable est accessible comme une propriété.
 
 import os
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Charge le fichier .env à la racine du projet
 # (cherche automatiquement dans le dossier parent)
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
+ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY")  
 
 class DatabaseConfig:
     """
@@ -72,3 +76,27 @@ class SecurityConfig:
 def is_production_ready() -> bool:
     """Vérifie si la configuration est prête pour la production."""
     return SecurityConfig.JWT_SECRET_KEY != "change_me_in_production"
+
+
+class Settings(BaseSettings):
+    """Configuration chargée depuis .env ou variables d'environnement."""
+
+    # Clé de chiffrement pour les clés privées (obligatoire pour ton module)
+    ENCRYPTION_KEY: str
+
+    # Autres configs que tu peux ajouter plus tard
+    DATABASE_URL: Optional[str] = None
+    JWT_SECRET_KEY: Optional[str] = None
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+    model_config = SettingsConfigDict(
+        env_file=".env",          # charge le fichier .env
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
+
+
+# Instance unique
+settings = Settings()
+

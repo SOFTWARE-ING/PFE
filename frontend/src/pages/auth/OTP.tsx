@@ -1,20 +1,22 @@
 import React, { useRef, useState, useEffect } from "react";
 import Card from "../../components/ui/Card";
 import { AuthLayout } from "../../components/layout/AuthLayout";
+import { useNavigate } from "react-router-dom";
 
 const OTP_LENGTH = 6;
 
 const Otp: React.FC = () => {
+  const navigate = useNavigate(); // ✅ FIXED POSITION
+
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(""));
   const inputsRef = useRef<HTMLInputElement[]>([]);
-
   const [timer, setTimer] = useState(180);
 
   // Countdown
   useEffect(() => {
     const interval = setInterval(() => {
       setTimer((prev) => {
-        if (prev === 0) return 180; // resend simulation
+        if (prev === 0) return 180;
         return prev - 1;
       });
     }, 1000);
@@ -32,6 +34,13 @@ const Otp: React.FC = () => {
     // Move forward
     if (value && index < OTP_LENGTH - 1) {
       inputsRef.current[index + 1]?.focus();
+    }
+
+    // Auto verify
+    if (newOtp.every((digit) => digit !== "")) {
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 800);
     }
   };
 
@@ -51,7 +60,9 @@ const Otp: React.FC = () => {
           {otp.map((digit, index) => (
             <input
               key={index}
-              ref={(el) => { if (el) inputsRef.current[index] = el;}}
+              ref={(el) => {
+                if (el) inputsRef.current[index] = el;
+              }}
               value={digit}
               onChange={(e) => handleChange(e.target.value, index)}
               maxLength={1}

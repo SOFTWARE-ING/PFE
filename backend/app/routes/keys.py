@@ -25,8 +25,12 @@ def generate_keys(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Génère une nouvelle paire de clés RSA pour l'agent connecté."""
-    if current_user.get("role") != "agent_officiel":
+    """Génère une nouvelle paire de clés RSA"""
+    
+    # Correction du rôle (accepte plusieurs formats)
+    role = current_user.get("role", "").lower().replace(" ", "_")
+    
+    if role != "agent_officiel":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seuls les agents officiels peuvent générer des clés"
@@ -43,8 +47,11 @@ def renew_keys(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Renouvelle les clés de l'agent connecté."""
-    if current_user.get("role") != "agent_officiel":
+    """Renouvelle les clés"""
+    
+    role = current_user.get("role", "").lower().replace(" ", "_")
+    
+    if role != "agent_officiel":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès refusé"

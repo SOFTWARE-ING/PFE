@@ -18,7 +18,7 @@ def startup():
     Crée les tables si elles n'existent pas.
     """
     print("🚀 Démarrage de l'API...")
-    # init_db()
+    init_db()
     print("✅ API prête !")
 
 

@@ -351,7 +351,7 @@ INSERT INTO communique (id_communique, titre, contenu, date_publication, hash_co
 ('COM-2024-008', 'Programme agricole 2024-2025', 'Lancement du programme "Sénégal Agricole" avec un investissement de 200 milliards FCFA pour moderniser le secteur agricole et atteindre l''autosuffisance alimentaire.', '2024-07-05 14:15:00', 'sha256$8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8', 'QR_CODE_008', 'PUBLIE'),
 ('COM-2024-009', 'Nouveau code du travail', 'Présentation du nouveau code du travail qui modernise les relations professionnelles, renforce les droits des travailleurs et facilite l''emploi des jeunes.', '2024-07-10 11:30:00', 'sha256$9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9', 'QR_CODE_009', 'PUBLIE'),
 ('COM-2024-010', 'Protection de l''environnement', 'Adoption d''un plan national de protection de l''environnement incluant la création de 5 nouvelles aires protégées et un programme de reforestation de 10 000 hectares.', '2024-07-15 15:00:00', 'sha256$0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0', 'QR_CODE_010', 'BROUILLON');
-
+ 
 -- ==============================================================================
 -- 6. INSERTION DES ARCHIVES
 -- ==============================================================================

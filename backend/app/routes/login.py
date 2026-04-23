@@ -23,6 +23,16 @@ from app.schemas.schemas import BackupCodesResponse, Enable2FAResponse, LoginReq
 router = APIRouter(prefix='/auth', tags=['AUTHENTIFICATION'])
 
 
+class RequestEmail2FARequest(BaseModel):
+    """Requête pour demander un code 2FA par email."""
+    temp_token: str = Field(..., description="Token temporaire reçu au login")
+
+
+class Verify2FAWithEmailRequest(BaseModel):
+    """Vérification 2FA avec option email."""
+    temp_token: str = Field(..., description="Token temporaire")
+    code_2fa: str = Field(..., min_length=6, max_length=6)
+    use_email: bool = Field(default=False, description="True si code reçu par email")
 # ============================================================================
 # 1. ENDPOINT DE LOGIN CLASSIQUE (avec support 2FA)
 # ============================================================================
@@ -90,39 +100,55 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 # ============================================================================
 
 
-@router.post("/verify-2fa", response_model=Verify2FAResponse)
-def verify_2fa(request: Verify2FARequest, db: Session = Depends(get_db)):
+
+@router.post("/2fa/request-email")
+def request_email_2fa(request: RequestEmail2FARequest, db: Session = Depends(get_db)):
     """
-    ÉTAPE 2 : Vérification du code Google Authenticator.
+    Demande l'envoi du code 2FA par email.
     
-    Cette endpoint doit être appelé APRÈS /auth/login si requires_2fa = true.
+    À utiliser quand l'utilisateur n'a pas Google Authenticator sous la main.
+    """
+    from app.core.jwt_utils import decode_access_token
+    
+    # Décode le token temporaire
+    payload = decode_access_token(request.temp_token)
+    if not payload or not payload.get("temp", False):
+        raise HTTPException(status_code=401, detail="Token invalide")
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utilisateur non identifié")
+    
+    auth_service = AuthService(db)
+    success, message = auth_service.request_email_2fa(user_id)
+    
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    
+    return {
+        "success": True,
+        "message": message
+    }
+
+
+
+@router.post("/verify-2fa", response_model=Verify2FAResponse)
+def verify_2fa(request: Verify2FAWithEmailRequest, db: Session = Depends(get_db)):
+    """
+    ÉTAPE 2 : Vérification du code 2FA (Google Auth OU Email).
     
     Requête :
         {
-            "temp_token": "le_token_temp_reçu_au_login",
-            "code_2fa": "123456"
-        }
-    
-    Réponse (succès) :
-        {
-            "success": true,
-            "message": "Authentification complète réussie",
-            "access_token": "final_jwt_token",
-            "token_type": "bearer",
-            "id_utilisateur": "uuid",
-            "expires_in": 1800
-        }
-    
-    Réponse (échec) :
-        {
-            "success": false,
-            "message": "Code 2FA invalide"
+            "temp_token": "token_temp",
+            "code_2fa": "123456",
+            "use_email": false  // false = Google Auth, true = Email
         }
     """
     auth_service = AuthService(db)
-    success, message, final_token, user_id = auth_service.verify_2fa(
+    success, message, final_token, user_id = auth_service.verify_2fa_with_email_option(
         request.temp_token,
-        request.code_2fa
+        request.code_2fa,
+        request.use_email
     )
     
     if not success:
@@ -136,7 +162,6 @@ def verify_2fa(request: Verify2FARequest, db: Session = Depends(get_db)):
         id_utilisateur=user_id,
         expires_in=1800
     )
-
 
 # ============================================================================
 # 3. ENDPOINTS DE GESTION DU 2FA (pour utilisateur connecté)

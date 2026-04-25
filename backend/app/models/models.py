@@ -259,6 +259,7 @@ class Communique(Base):
             "statut", "date_publication",
             postgresql_where=Column("statut") == "PUBLIE",
         ),
+        Index("idx_communique_theme",            "theme"),
         {"schema": "signature_communiques_officiels"}
     )
 
@@ -271,6 +272,8 @@ class Communique(Base):
     hash_contenu:     Mapped[str]            = mapped_column(String(255), nullable=False)
     qr_code:          Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     statut:           Mapped[str]            = mapped_column(String(50), default="BROUILLON", nullable=False)
+    theme:            Mapped[Optional[str]]  = mapped_column(String(100), nullable=True)
+    mots_cles:        Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
 
     # ── Relations ──
     archives:      Mapped[List["Archive"]]                       = relationship(
@@ -307,6 +310,7 @@ class Archive(Base):
     )
     chemin_stockage:  Mapped[str]            = mapped_column(String(500), nullable=False)
     taille_fichier:   Mapped[Optional[int]]  = mapped_column(BigInteger, nullable=True)
+    contenu_extrait:  Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     date_archivage:   Mapped[datetime]       = mapped_column(
         DateTime(timezone=False), server_default=func.now(), nullable=False
     )

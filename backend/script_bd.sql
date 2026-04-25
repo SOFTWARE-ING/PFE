@@ -216,12 +216,34 @@ CREATE INDEX idx_otp_expiration ON auth_otp(date_expiration);
 -- 6. INDEX SPÉCIFIQUES POUR RECHERCHES TEXTUELLES AVANCÉES
 -- ==============================================================================
 
--- Index pour recherche plein texte sur communique (si MySQL 5.7+)
--- ALTER TABLE communique ADD FULLTEXT INDEX ft_communique_contenu (titre, contenu);
-
--- Index partiel simulé via index sur statut pour les communiqués publiés
 CREATE INDEX idx_communique_publie ON communique(statut, date_publication) 
-    WHERE statut = 'PUBLIE';  -- Fonctionne sur PostgreSQL, MySQL 8.0+
+    WHERE statut = 'PUBLIE'; 
+
+-- ============================================================================
+-- TABLE D'INDEX OCR (OPTIONNEL) ET INDEX FULL-TEXT POSTGRESQL
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ocr_index (
+    id_ocr VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id_archive VARCHAR(36) NOT NULL,
+    id_communique VARCHAR(36) NOT NULL,
+    texte_extrait TEXT NOT NULL,
+    date_indexation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ocr_archive FOREIGN KEY (id_archive) REFERENCES archive(id_archive) ON DELETE CASCADE,
+    CONSTRAINT fk_ocr_communique FOREIGN KEY (id_communique) REFERENCES communique(id_communique) ON DELETE CASCADE
+);
+
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- Index GIN full-text sur la table communique (titre + contenu)
+-- Utilise la configuration 'french' pour stemming correct
+CREATE INDEX IF NOT EXISTS idx_communique_fulltext ON communique USING GIN (
+    to_tsvector('french', coalesce(titre,'') || ' ' || coalesce(contenu,''))
+);
+
+-- Index GIN sur la table ocr_index pour recherche dans le texte extrait
+CREATE INDEX IF NOT EXISTS idx_ocr_index_fulltext ON ocr_index USING GIN (
+    to_tsvector('french', coalesce(texte_extrait,''))
+);
 
 -- ==============================================================================
 -- 7. INDEX DE COUVERTURE POUR LES REQUÊTES FRÉQUENTES

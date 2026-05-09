@@ -1,19 +1,27 @@
-// =============================
-// File: src/components/ui/Card.tsx
-// =============================
-const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <div className="
-      bg-card-light dark:bg-card-dark
-      border border-border-light dark:border-border-dark
-      shadow-xl shadow-blue-500/5
-      backdrop-blur-md
-      rounded-2xl p-8 w-full max-w-md
-      transition-all duration-300
-    ">
-      {children}
-    </div>
-  );
-};
+import React from "react";
+
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  padding?: "sm" | "md" | "lg" | "none";
+}
+
+const paddings = { none: "", sm: "p-4", md: "p-6", lg: "p-8" };
+
+export const Card: React.FC<CardProps> = ({
+  children,
+  className = "",
+  padding = "md",
+}) => (
+  <div
+    className={[
+      "bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm",
+      paddings[padding],
+      className,
+    ].join(" ")}
+  >
+    {children}
+  </div>
+);
 
 export default Card;

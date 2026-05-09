@@ -82,11 +82,10 @@ export interface APIResponse<T = unknown> {
 export interface CryptographicKey {
   id_cle: string;
   id_agent_officiel: string;
-  algorithme: string;
   cle_publique: string;
   date_creation: string;
-  date_expiration?: string;
-  est_active: boolean;
+  date_expiration: string;
+  est_expiree?: boolean;
 }
 
 // ─── Signatures ───────────────────────────────────────────────────────────────

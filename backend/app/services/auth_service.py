@@ -20,6 +20,10 @@ from app.core.auth import verify_password, hash_password
 from app.core.jwt_utils import create_access_token, decode_access_token
 from app.services.totp_service import TOTPService
 
+from app.services.email_service import EmailService
+from app.models.models import AuthEmailCode
+import secrets
+
 
 class AuthService:
     """
@@ -107,6 +111,139 @@ class AuthService:
         return True, "Connexion réussie", token, utilisateur.id_utilisateur, {
             "requires_2fa": False
         }
+    
+
+    '''
+        Email verification 2fa
+
+    '''
+
+
+
+    def request_email_2fa(self, user_id: str) -> Tuple[bool, str]:
+        """
+        Envoie un code 2FA par email à l'utilisateur.
+        
+        Utilisation :
+            success, message = auth.request_email_2fa(user_id)
+        """
+        utilisateur = self.db.query(Utilisateur).filter(
+            Utilisateur.id_utilisateur == user_id
+        ).first()
+        
+        if not utilisateur:
+            return False, "Utilisateur non trouvé"
+        
+        # Vérifier si le 2FA est activé
+        if not self._has_2fa_enabled(user_id):
+            return False, "Le 2FA n'est pas activé pour ce compte"
+        
+        # Génère un code à 6 chiffres
+        code = EmailService.generate_code()
+        
+        # Stocke le code en base
+        email_code = AuthEmailCode(
+            id_utilisateur=user_id,
+            code=code,
+            date_expiration=datetime.now() + timedelta(minutes=5)
+        )
+        self.db.add(email_code)
+        self.db.commit()
+        
+        # Envoie l'email
+        nom_complet = f"{utilisateur.prenom} {utilisateur.nom}"
+        success, message = EmailService.send_2fa_code(
+            utilisateur.email, 
+            code, 
+            nom_complet
+        )
+        
+        if success:
+            self._log_securite(user_id, "EMAIL_2FA_SENT", True, "Code 2FA envoyé par email")
+            return True, f"Code envoyé à {utilisateur.email}"
+        else:
+            self._log_securite(user_id, "EMAIL_2FA_SENT", False, f"Échec envoi: {message}")
+            return False, message
+    
+    def verify_email_2fa(self, user_id: str, code: str) -> bool:
+        """
+        Vérifie un code 2FA reçu par email.
+        """
+        # Cherche un code valide non utilisé
+        email_code = self.db.query(AuthEmailCode).filter(
+            AuthEmailCode.id_utilisateur == user_id,
+            AuthEmailCode.code == code,
+            AuthEmailCode.est_utilise == False,
+            AuthEmailCode.date_expiration > datetime.now()
+        ).first()
+        
+        if not email_code:
+            return False
+        
+        # Marque comme utilisé
+        email_code.est_utilise = True
+        self.db.commit()
+        
+        self._log_securite(user_id, "EMAIL_2FA_VERIFY", True, "Code email validé")
+        return True
+    
+    def verify_2fa_with_email_option(self, temp_token: str, code_2fa: str, use_email: bool = False) -> Tuple[bool, str, Optional[str], Optional[str]]:
+        """
+        Vérification 2FA qui accepte soit Google Auth, soit Email.
+        
+        Si use_email=True, vérifie dans AuthEmailCode.
+        Sinon, vérifie dans Utilisateur2FA (Google Auth).
+        """
+        # 1. Vérifie le token temporaire
+        payload = decode_access_token(temp_token)
+        if not payload:
+            return False, "Token invalide ou expiré", None, None
+        
+        if not payload.get("temp", False):
+            return False, "Token invalide pour le 2FA", None, None
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            return False, "Utilisateur non identifié", None, None
+        
+        # 2. Vérifie le code selon la méthode choisie
+        if use_email:
+            if not self.verify_email_2fa(user_id, code_2fa):
+                return False, "Code email invalide ou expiré", None, None
+        else:
+            if not self._verify_user_2fa_code(user_id, code_2fa):
+                return False, "Code 2FA invalide. Vérifie ton application Google Authenticator.", None, None
+        
+        # 3. Code valide : génère le token final
+        utilisateur = self.db.query(Utilisateur).filter(
+            Utilisateur.id_utilisateur == user_id
+        ).first()
+        
+        if not utilisateur:
+            return False, "Utilisateur non trouvé", None, None
+        
+        role = self._get_user_role(user_id)
+        
+        token_data = {
+            "sub": utilisateur.id_utilisateur,
+            "email": utilisateur.email,
+            "role": role,
+            "nom": utilisateur.nom,
+            "prenom": utilisateur.prenom,
+            "has_2fa": True
+        }
+        
+        final_token = create_access_token(token_data)
+        
+        self._log_securite(user_id, "CONNEXION", True, f"Connexion complète (2FA) en tant que {role}")
+        
+        return True, "Authentification complète réussie", final_token, user_id
+
+
+
+
+
+
     
     def verify_2fa(self, temp_token: str, code_2fa: str) -> Tuple[bool, str, Optional[str], Optional[str]]:
         """

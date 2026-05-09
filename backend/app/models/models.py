@@ -518,3 +518,34 @@ class AuthOtp(Base):
     def __repr__(self) -> str:  # pragma: no cover
         return f"<AuthOtp utilisateur={self.id_utilisateur} utilise={self.est_utilise}>"
     
+
+# Dans models.py, après la classe AuthOtp
+
+class AuthEmailCode(Base):
+    """
+    Code 2FA envoyé par email (alternative à Google Authenticator).
+    Expire après 5 minutes. Usage unique.
+    """
+    __tablename__ = "auth_email_code"
+    __table_args__ = (
+        Index("idx_email_code_user", "id_utilisateur"),
+        Index("idx_email_code_expiration", "date_expiration"),
+        {"schema": "signature_communiques_officiels"}
+    )
+
+    id_code: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
+    id_utilisateur: Mapped[str] = mapped_column(
+        String(36), ForeignKey("signature_communiques_officiels.utilisateur.id_utilisateur", ondelete="CASCADE"),
+        nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(6), nullable=False)
+    date_creation: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), server_default=func.now(), nullable=False
+    )
+    date_expiration: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    est_utilise: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    utilisateur: Mapped["Utilisateur"] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<AuthEmailCode user={self.id_utilisateur} used={self.est_utilise}>"

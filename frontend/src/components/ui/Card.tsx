@@ -1,19 +1,27 @@
 import React from "react";
 
-const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <div
-      className="
-      w-full max-w-md p-6 rounded-2xl shadow-lg
-      bg-white text-gray-900
-      dark:bg-gray-800 dark:text-white
-      transition-colors duration-300
-    "
-    >
-        
-      {children}
-    </div>
-  );
-};
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  padding?: "sm" | "md" | "lg" | "none";
+}
+
+const paddings = { none: "", sm: "p-4", md: "p-6", lg: "p-8" };
+
+export const Card: React.FC<CardProps> = ({
+  children,
+  className = "",
+  padding = "md",
+}) => (
+  <div
+    className={[
+      "bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm",
+      paddings[padding],
+      className,
+    ].join(" ")}
+  >
+    {children}
+  </div>
+);
 
 export default Card;

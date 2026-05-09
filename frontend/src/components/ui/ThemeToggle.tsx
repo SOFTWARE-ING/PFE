@@ -1,31 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Moon, Sun } from "lucide-react";
+import { useDarkMode } from "../../hooks/useDarkMode";
 
-const ThemeToggle: React.FC = () => {
-  const [dark, setDark] = useState(() => {
-    return localStorage.getItem("theme") === "dark";
-  });
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    if (dark) {
-      root.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      root.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [dark]);
+export const ThemeToggle: React.FC<{ className?: string }> = ({
+  className = "",
+}) => {
+  const { darkMode, setDarkMode } = useDarkMode();
 
   return (
     <button
-      onClick={() => setDark(!dark)}
-      className="absolute top-4 right-4 p-2 rounded-lg 
-      bg-gray-200 text-gray-800 
-      dark:bg-gray-700 dark:text-yellow-400 transition"
+      onClick={() => setDarkMode(!darkMode)}
+      aria-label="Toggle theme"
+      className={[
+        "p-2 rounded-lg transition-colors",
+        "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+        "hover:bg-slate-100 dark:hover:bg-slate-800",
+        className,
+      ].join(" ")}
     >
-      {dark ? <Sun size={18} /> : <Moon size={18} />}
+      {darkMode ? <Sun size={18} /> : <Moon size={18} />}
     </button>
   );
 };

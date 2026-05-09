@@ -25,6 +25,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from datetime import datetime, timezone
 
 
 # ---------------------------------------------------------------------------
@@ -431,9 +432,13 @@ class CleCryptographiqueResponse(_OrmBase):
     cle_publique:      str
     date_creation:     datetime
     date_expiration:   datetime
-    est_expiree:       Optional[bool] = Field(
-        default=None, description="True si date_expiration < maintenant"
-    )
+    est_expiree:       Optional[bool] = Field(default=None, description="True si date_expiration < maintenant")
+
+    @model_validator(mode="after")
+    def compute_est_expiree(self) -> "CleCryptographiqueResponse":
+        if self.date_expiration:
+            self.est_expiree = self.date_expiration < datetime.now(timezone.utc).replace(tzinfo=None)
+        return self
 
 
 class CleCryptographiqueSummary(_OrmBase):
@@ -527,29 +532,39 @@ class LoginRequest(_OrmBase):
     mot_de_passe: str = Field(..., min_length=8)
 
 
+# class LoginResponse(_OrmBase):
+#     """Réponse à la connexion."""
+#     success: bool
+#     message: str
+#     access_token: Optional[str] = None
+#     token_type: Optional[str] = "bearer"
+#     id_utilisateur: Optional[str] = None
+#     requires_otp: bool = False
+
+
 class LoginResponse(_OrmBase):
-    """Réponse à la connexion."""
     success: bool
     message: str
     access_token: Optional[str] = None
     token_type: Optional[str] = "bearer"
     id_utilisateur: Optional[str] = None
-    requires_otp: bool = False
+    requires_2fa: bool = False   # ← renommer requires_otp en requires_2fa
 
 
-class OtpVerifyRequest(_OrmBase):
-    """Deuxième étape d'authentification : vérification du code OTP."""
-    id_utilisateur: str
-    code_otp:       str = Field(..., min_length=6, max_length=10)
+
+# class OtpVerifyRequest(_OrmBase):
+#     """Deuxième étape d'authentification : vérification du code OTP."""
+#     id_utilisateur: str
+#     code_otp:       str = Field(..., min_length=6, max_length=10)
 
 
-class OtpVerifyResponse(_OrmBase):
-    """Réponse à la vérification OTP : token JWT en cas de succès."""
-    success:      bool
-    message:      str
-    access_token: Optional[str]   = None
-    token_type:   Optional[str]   = "bearer"
-    expires_in:   Optional[int]   = Field(default=None, description="Durée de validité en secondes")
+# class OtpVerifyResponse(_OrmBase):
+#     """Réponse à la vérification OTP : token JWT en cas de succès."""
+#     success:      bool
+#     message:      str
+#     access_token: Optional[str]   = None
+#     token_type:   Optional[str]   = "bearer"
+#     expires_in:   Optional[int]   = Field(default=None, description="Durée de validité en secondes")
 
 
 class AuthOtpResponse(_OrmBase):

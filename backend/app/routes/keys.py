@@ -11,7 +11,7 @@ from app.services.key_service import KeyService
 from app.schemas.schemas import CleCryptographiqueResponse
 from app.core.jwt_utils import get_current_user
 
-from app.core.jwt_utils import get_current_user
+# from app.core.jwt_utils import get_current_user
 
 # ==================== CORRECTION ICI ====================
 router = APIRouter(
@@ -28,7 +28,8 @@ def generate_keys(
     """Génère une nouvelle paire de clés RSA"""
     
     # Correction du rôle (accepte plusieurs formats)
-    role = current_user.get("role", "").lower().replace(" ", "_")
+    # role = current_user.get("role", "").lower().replace(" ", "_")
+    role = current_user.get("role", "")
     
     if role != "agent_officiel":
         raise HTTPException(
@@ -49,8 +50,8 @@ def renew_keys(
 ):
     """Renouvelle les clés"""
     
-    role = current_user.get("role", "").lower().replace(" ", "_")
-    
+    # role = current_user.get("role", "").lower().replace(" ", "_")
+    role = current_user.get("role", "")
     if role != "agent_officiel":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

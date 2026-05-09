@@ -18,6 +18,17 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+# from sqlalchemy import (
+#     BigInteger,
+#     Boolean,
+#     Column,
+#     ForeignKey,
+#     Index,
+#     String,
+#     Text,
+#     DateTime,
+# )
+
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -27,6 +38,7 @@ from sqlalchemy import (
     String,
     Text,
     DateTime,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -255,10 +267,10 @@ class Communique(Base):
         Index("idx_communique_statut_date",      "statut", "date_publication"),
         # Index partiel PostgreSQL : seulement les communiqués publiés
         Index(
-            "idx_communique_publie",
-            "statut", "date_publication",
-            postgresql_where=Column("statut") == "PUBLIE",
-        ),
+                "idx_communique_publie",
+                "statut", "date_publication",
+                postgresql_where=text("statut = 'PUBLIE'"),
+            ),
         {"schema": "signature_communiques_officiels"}
     )
 

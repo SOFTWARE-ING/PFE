@@ -21,6 +21,20 @@ import type {
   APIResponse,
 } from "../types";
 
+export interface PopularResult {
+  id: string;
+  titre: string;
+  statut: string;
+  date_publication: string;
+  nb_consultations?: number;
+}
+
+export interface SimpleListResponse {
+  success: boolean;
+  total: number;
+  results: PopularResult[];
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 
 // ─── Token storage ─────────────────────────────────────────────────────────
@@ -183,11 +197,13 @@ export const searchAPI = {
       `/search/suggestions?q=${encodeURIComponent(q)}&limit=${limit}`
     ),
 
+
   popular: (limit = 10) =>
-    apiFetch<SearchResponse>(`/search/popular?limit=${limit}`),
+    apiFetch<SimpleListResponse>(`/search/popular?limit=${limit}`),
 
   recent: (limit = 10) =>
-    apiFetch<SearchResponse>(`/search/recent?limit=${limit}`),
+    apiFetch<SimpleListResponse>(`/search/recent?limit=${limit}`),
+
 };
 
 // ─── OCR ───────────────────────────────────────────────────────────────────

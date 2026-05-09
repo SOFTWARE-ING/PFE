@@ -12,6 +12,10 @@ from sqlalchemy.orm import sessionmaker, Session
 from app.core.config import DatabaseConfig
 from app.models.models import Base  # Importe les modèles que déjà deja dispo
 
+from sqlalchemy import event
+
+
+
 # ============================================
 # 1. CRÉATION DU MOTEUR (ENGINE) DE CONNEXION
 # ============================================
@@ -25,6 +29,22 @@ engine = create_engine(
     max_overflow=10,       # Connexions supplémentaires si besoin
     pool_pre_ping=True,    # Vérifie que la connexion est encore vivante
 )
+
+
+engine = create_engine(
+    DatabaseConfig.get_url(),
+    echo=True,        # Met à False en production pour éviter de polluer les logs
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+)
+
+@event.listens_for(engine, "connect")
+def set_search_path(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("SET search_path TO signature_communiques_officiels, public")
+    cursor.close()
+
 
 # ============================================
 # 2. CRÉATION DES SESSIONS

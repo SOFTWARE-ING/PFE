@@ -57,7 +57,7 @@ CREATE TABLE citoyen (
 -- 3. AUTRES ENTITÉS PRINCIPALES
 -- ==============================================================================
 CREATE TABLE communique (
-    id_communique VARCHAR(36) PRIMARY KEY,
+    id_communique VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     titre VARCHAR(255) NOT NULL,
     contenu TEXT NOT NULL,
     date_publication TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -67,7 +67,7 @@ CREATE TABLE communique (
 );
 
 CREATE TABLE archive (
-    id_archive VARCHAR(36) PRIMARY KEY,
+    id_archive VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_communique VARCHAR(36) NOT NULL,
     chemin_stockage VARCHAR(500) NOT NULL,
     taille_fichier BIGINT,
@@ -128,7 +128,7 @@ CREATE TABLE consultation_citoyen_communique (
 );
 -- Table de pour gere lauthentification a double facteurs (2FA)
 CREATE TABLE auth_otp (
-    id_otp VARCHAR(36) PRIMARY KEY,
+    id_otp VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     id_utilisateur VARCHAR(36) NOT NULL,
     code_otp VARCHAR(10) NOT NULL,
     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -140,6 +140,41 @@ CREATE TABLE auth_otp (
         REFERENCES utilisateur(id_utilisateur)
         ON DELETE CASCADE
 );
+
+-- Table pour les codes 2FA envoyés par email
+CREATE TABLE signature_communiques_officiels.auth_email_code (
+    id_code VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id_utilisateur VARCHAR(36) NOT NULL,
+    code VARCHAR(6) NOT NULL,
+    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_expiration TIMESTAMP NOT NULL,
+    est_utilise BOOLEAN DEFAULT FALSE,
+    CONSTRAINT fk_email_code_utilisateur 
+        FOREIGN KEY (id_utilisateur)
+        REFERENCES signature_communiques_officiels.utilisateur(id_utilisateur)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX idx_email_code_user ON signature_communiques_officiels.auth_email_code(id_utilisateur);
+CREATE INDEX idx_email_code_expiration ON signature_communiques_officiels.auth_email_code(date_expiration);
+
+
+-- Table pour les secrets TOTP (Google Authenticator)
+-- CREATE TABLE signature_communiques_officiels.utilisateur_2fa (
+--     id_utilisateur VARCHAR(36) PRIMARY KEY,
+--     totp_secret VARCHAR(32) NOT NULL,
+--     date_activation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     est_active BOOLEAN DEFAULT TRUE,
+--     CONSTRAINT fk_2fa_utilisateur 
+--         FOREIGN KEY (id_utilisateur)
+--         REFERENCES signature_communiques_officiels.utilisateur(id_utilisateur)
+--         ON DELETE CASCADE
+-- );
+
+-- CREATE INDEX idx_2fa_utilisateur ON signature_communiques_officiels.utilisateur_2fa(id_utilisateur);
+-- CREATE INDEX idx_2fa_active ON signature_communiques_officiels.utilisateur_2fa(est_active);
+
+
 -- ==============================================================================
 -- 5. INDEXATION COMPLÈTE POUR OPTIMISATION DES PERFORMANCES
 -- ==============================================================================

@@ -143,12 +143,20 @@ class SignatureService:
                 )
             
             # 5. Vérifie que la clé n'est pas expirée
-            if cle.date_expiration.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            # if cle.date_expiration.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            #     return SignatureResult(
+            #         False,
+            #         f"Clé expirée depuis le {cle.date_expiration.strftime('%d/%m/%Y')}. Renouvelez-la."
+            #     )
+            
+            # 5. Vérifie que la clé n'est pas expirée
+            if cle.date_expiration < datetime.utcnow():
                 return SignatureResult(
                     False,
                     f"Clé expirée depuis le {cle.date_expiration.strftime('%d/%m/%Y')}. Renouvelez-la."
                 )
             
+
             # 6. Déchiffre la clé privée
             try:
                 private_key_pem = self.fernet.decrypt(
@@ -338,15 +346,30 @@ class SignatureService:
         digest.update(content)
         return digest.finalize()
     
-    def _get_active_key(self, agent_id: str) -> Optional[CleCryptographique]:
-        """
-        Récupère la clé active la plus récente d'un agent.
+    # def _get_active_key(self, agent_id: str) -> Optional[CleCryptographique]:
+    #     """
+    #     Récupère la clé active la plus récente d'un agent.
         
-        Critères :
-        - Non expirée
-        - La plus récente (par date de création)
-        """
-        now = datetime.now(timezone.utc)
+    #     Critères :
+    #     - Non expirée
+    #     - La plus récente (par date de création)
+    #     """
+    #     now = datetime.now(timezone.utc)
+        
+    #     cle = (
+    #         self.db.query(CleCryptographique)
+    #         .filter(
+    #             CleCryptographique.id_agent_officiel == agent_id,
+    #             CleCryptographique.date_expiration > now
+    #         )
+    #         .order_by(CleCryptographique.date_creation.desc())
+    #         .first()
+    #     )
+        
+    #     return cle
+
+    def _get_active_key(self, agent_id: str) -> Optional[CleCryptographique]:
+        now = datetime.utcnow()   # ← utiliser utcnow() cohérent avec la BD
         
         cle = (
             self.db.query(CleCryptographique)
@@ -357,8 +380,10 @@ class SignatureService:
             .order_by(CleCryptographique.date_creation.desc())
             .first()
         )
-        
         return cle
+
+
+
     
     def _get_key_for_signature(self, agent_id: str) -> Optional[CleCryptographique]:
         """

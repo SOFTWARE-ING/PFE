@@ -30,7 +30,7 @@ class EmailService:
         
         Retourne (succès, message).
         """
-        subject = "<b>🛡️ SHIELD — Code de Vérification Sécurisé</b>"
+        subject = "🛡️ SHIELD — Code de Vérification Sécurisé"
 
         body = f"""
         <!DOCTYPE html>

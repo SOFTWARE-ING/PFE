@@ -132,7 +132,7 @@ def sign_communique(
     Header requis : Authorization: Bearer <JWT>
     """
     # 1. Vérification du rôle
-    role = current_user.get("role", "").lower().replace(" ", "_")
+    role = current_user.get("role", "")
     
     if role != "agent_officiel":
         raise HTTPException(
@@ -274,7 +274,7 @@ def get_my_signatures(
     """
     Retourne l'historique des signatures de l'agent connecté.
     """
-    role = current_user.get("role", "").lower().replace(" ", "_")
+    role = current_user.get("role", "")
     
     if role != "agent_officiel":
         raise HTTPException(
@@ -372,7 +372,7 @@ def get_pending_documents(
     """
     Dashboard agent : documents nécessitant une signature.
     """
-    role = current_user.get("role", "").lower().replace(" ", "_")
+    role = current_user.get("role", "")
     
     if role != "agent_officiel":
         raise HTTPException(
@@ -415,7 +415,7 @@ def get_signature_stats(
     """
     Retourne les statistiques de signature de l'agent.
     """
-    role = current_user.get("role", "").lower().replace(" ", "_")
+    role = current_user.get("role", "")
     
     if role != "agent_officiel":
         raise HTTPException(

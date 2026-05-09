@@ -397,29 +397,52 @@ class AuthService:
     # MÉTHODES EXISTANTES (inchangées)
     # ============================================
     
+    # def _get_user_role(self, user_id: str) -> Optional[str]:
+    #     """
+    #     Détermine le rôle d'un utilisateur en vérifiant les tables filles.
+    #     """
+    #     agent = self.db.query(AgentOfficiel).filter(
+    #         AgentOfficiel.id_utilisateur == user_id
+    #     ).first()
+    #     if agent:
+    #         return "Agent Officiel"
+        
+    #     admin = self.db.query(Administrateur).filter(
+    #         Administrateur.id_utilisateur == user_id
+    #     ).first()
+    #     if admin:
+    #         return "Administrateur"
+        
+    #     citoyen = self.db.query(Citoyen).filter(
+    #         Citoyen.id_utilisateur == user_id
+    #     ).first()
+    #     if citoyen:
+    #         return "citoyen(ou organisation)"
+        
+    #     return None
+
     def _get_user_role(self, user_id: str) -> Optional[str]:
-        """
-        Détermine le rôle d'un utilisateur en vérifiant les tables filles.
-        """
         agent = self.db.query(AgentOfficiel).filter(
             AgentOfficiel.id_utilisateur == user_id
         ).first()
         if agent:
-            return "Agent Officiel"
-        
+            return "agent_officiel"   # ← snake_case uniforme
+
         admin = self.db.query(Administrateur).filter(
             Administrateur.id_utilisateur == user_id
         ).first()
         if admin:
-            return "Administrateur"
-        
+            return "administrateur"
+
         citoyen = self.db.query(Citoyen).filter(
             Citoyen.id_utilisateur == user_id
         ).first()
         if citoyen:
-            return "citoyen(ou organisation)"
-        
+            return "citoyen"
+
         return None
+
+
     
     def _log_securite(self, user_id: Optional[str], action: str, succes: bool, details: str):
         """Enregistre un événement dans les logs de sécurité."""

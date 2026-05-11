@@ -1,4 +1,3 @@
-import React from "react";
 import { Settings, Moon, Sun, Monitor } from "lucide-react";
 import { Card } from "../../components/ui/Card";
 import { useDarkMode } from "../../hooks/useDarkMode";

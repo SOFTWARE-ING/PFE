@@ -16,6 +16,14 @@ import { Alert } from "../../components/ui/Alert";
 import { keysAPI } from "../../services/api";
 import type { CryptographicKey } from "../../types";
 
+type CryptographicKeyWithAlgorithm = CryptographicKey & {
+  algorithme?: string;
+};
+
+function getKeyAlgorithm(key: CryptographicKey) {
+  return (key as CryptographicKeyWithAlgorithm).algorithme ?? "RSA";
+}
+
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -36,10 +44,19 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
+function isKeyActive(k: CryptographicKey) {
+  const isExpired = k.date_expiration
+    ? new Date(k.date_expiration) < new Date()
+    : false;
+
+  return k.est_expiree === true ? false : !isExpired;
+}
+
 function KeyCard({ k }: { k: CryptographicKey }) {
   const isExpired = k.date_expiration
     ? new Date(k.date_expiration) < new Date()
     : false;
+  const isActive = isKeyActive(k);
 
   return (
     <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white dark:bg-slate-900">
@@ -47,12 +64,12 @@ function KeyCard({ k }: { k: CryptographicKey }) {
         <div className="flex items-center gap-2.5">
           <div
             className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-              k.est_active && !isExpired
+              isActive && !isExpired
                 ? "bg-emerald-50 dark:bg-emerald-950"
                 : "bg-slate-100 dark:bg-slate-800"
             }`}
           >
-            {k.est_active && !isExpired ? (
+            {isActive && !isExpired ? (
               <CheckCircle
                 size={18}
                 className="text-emerald-600 dark:text-emerald-400"
@@ -69,13 +86,13 @@ function KeyCard({ k }: { k: CryptographicKey }) {
               {k.id_cle.slice(0, 16)}…
             </p>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-              {k.algorithme}
+              {getKeyAlgorithm(k)}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant={k.est_active && !isExpired ? "success" : "neutral"}>
-            {k.est_active && !isExpired ? "Active" : isExpired ? "Expirée" : "Inactive"}
+          <Badge variant={isActive && !isExpired ? "success" : "neutral"}>
+            {isActive && !isExpired ? "Active" : isExpired ? "Expirée" : "Inactive"}
           </Badge>
           <CopyButton value={k.cle_publique} />
         </div>
@@ -165,7 +182,7 @@ export default function KeysPage() {
     }
   };
 
-  const activeKey = keys.find((k) => k.est_active);
+  const activeKey = keys.find(isKeyActive);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -203,7 +220,7 @@ export default function KeysPage() {
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {activeKey
-                ? `Algorithme : ${activeKey.algorithme}`
+                ? `Algorithme : ${getKeyAlgorithm(activeKey)}`
                 : "Générez une nouvelle paire de clés pour pouvoir signer des documents"}
             </p>
           </div>

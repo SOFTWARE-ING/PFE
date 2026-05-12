@@ -17,11 +17,11 @@ class EmailService:
     """Service d'envoi d'emails (2FA, notifications)."""
     
     # Configuration SMTP (à mettre dans .env plus tard)
-    SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER = os.getenv("SMTP_USER", "")
-    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-    FROM_EMAIL = os.getenv("FROM_EMAIL", "shield@signature-officielle.com")
+    SMTP_HOST = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("MAIL_PORT", "587"))
+    SMTP_USER = os.getenv("MAIL_USERNAME", "")
+    SMTP_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    FROM_EMAIL = os.getenv("MAIL_FROM", "shield@signature-officielle.com")
     
     @classmethod
     def send_2fa_code(cls, to_email: str, code: str, user_name: str) -> Tuple[bool, str]:

@@ -122,6 +122,7 @@ export const authAPI = {
     }),
 
   // getMe: () => apiFetch<UserInfo>("/auth/me"),
+  
   getMe: (token?: string) => apiFetch<UserInfo>("/auth/me", { token }),
 
   get2FAStatus: () => apiFetch<Status2FAResponse>("/auth/2fa/status"),

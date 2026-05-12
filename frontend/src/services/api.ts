@@ -121,7 +121,8 @@ export const authAPI = {
       body: { temp_token },
     }),
 
-  getMe: () => apiFetch<UserInfo>("/auth/me"),
+  // getMe: () => apiFetch<UserInfo>("/auth/me"),
+  getMe: (token?: string) => apiFetch<UserInfo>("/auth/me", { token }),
 
   get2FAStatus: () => apiFetch<Status2FAResponse>("/auth/2fa/status"),
 

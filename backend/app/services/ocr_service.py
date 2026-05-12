@@ -111,6 +111,27 @@ class OCRService:
         image = image.filter(ImageFilter.SHARPEN)
         return image
 
+
+    # @staticmethod
+    # def _preprocess(image: Image.Image) -> Image.Image:
+    #     from PIL import ImageOps
+    #     if image.mode not in ('L', 'RGB'):
+    #         image = image.convert('RGB')
+    #     image = image.convert('L')
+    #     # Auto-contrast (fixes dark/overexposed photos)
+    #     image = ImageOps.autocontrast(image, cutoff=2)
+    #     # Stronger contrast boost
+    #     image = ImageEnhance.Contrast(image).enhance(2.5)
+    #     # Stronger sharpening
+    #     image = image.filter(ImageFilter.SHARPEN)
+    #     image = image.filter(ImageFilter.SHARPEN)
+    #     # Resize small images (improves OCR on low-res photos)
+    #     w, h = image.size
+    #     if w < 1500:
+    #         image = image.resize((w * 2, h * 2), Image.LANCZOS)
+    #     return image
+
+
     # ─── PDF ─────────────────────────────────────────────────────────────
 
     @staticmethod

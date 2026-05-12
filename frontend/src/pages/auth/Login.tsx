@@ -61,7 +61,8 @@ export default function Login() {
         });
       } else {
         // Login without 2FA — fetch user info and go to dashboard
-        const me = await authAPI.getMe();
+        // const me = await authAPI.getMe();
+        const me = await authAPI.getMe(res.access_token);
         setAuth(res.access_token, me);
         navigate(from, { replace: true });
       }

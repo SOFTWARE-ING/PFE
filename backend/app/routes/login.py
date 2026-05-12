@@ -398,3 +398,16 @@ def generate_backup_codes(
     # (créer une table backup_codes si nécessaire)
     
     return BackupCodesResponse(backup_codes=backup_codes)
+
+# from app.core.security import get_current_user
+
+# @router.get("/me")
+# def get_me(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+#     return {
+#         "id_utilisateur": current_user.id_utilisateur,
+#         "nom": current_user.nom,
+#         "prenom": current_user.prenom,
+#         "email": current_user.email,
+#         "date_creation": str(current_user.date_creation),
+#     }
+

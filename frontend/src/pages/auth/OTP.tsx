@@ -114,7 +114,7 @@ export default function OTP() {
         return;
       }
 
-      const me = await authAPI.getMe();
+      const me = await authAPI.getMe(res.access_token);
       setAuth(res.access_token, me);
       navigate(state.from ?? "/dashboard", { replace: true });
     } catch (err: unknown) {

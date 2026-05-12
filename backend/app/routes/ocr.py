@@ -39,7 +39,10 @@ async def extract_content(file: UploadFile = File(...)):
         if not content:
             raise HTTPException(status_code=400, detail="Le fichier est vide.")
 
+        # extracted_text = OCRService.extract_text(content, file.filename)
+
         extracted_text = OCRService.extract_text(content, file.filename)
+        normalized_text = OCRService.normalize(extracted_text)
 
         if not extracted_text:
             return {
@@ -49,9 +52,17 @@ async def extract_content(file: UploadFile = File(...)):
                 "char_count": 0
             }
 
+        # return {
+        #     "filename": file.filename,
+        #     "extracted_text": extracted_text,
+        #     "message": "Texte extrait avec succès.",
+        #     "char_count": len(extracted_text)
+        # }
+    
         return {
             "filename": file.filename,
-            "extracted_text": extracted_text,
+            "extracted_text": extracted_text,        # readable, for display
+            "normalized_text": normalized_text,      # for comparison/verification
             "message": "Texte extrait avec succès.",
             "char_count": len(extracted_text)
         }

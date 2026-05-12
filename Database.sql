@@ -11,10 +11,9 @@ CREATE SCHEMA IF NOT EXISTS signature_communiques_officiels;
 SET search_path TO signature_communiques_officiels;
 
 
-
--- =========================================================================
+-- ============================================================================
 -- 1. CRÉATION DE LA TABLE MÈRE
--- ==============================================================================
+-- ============================================================================
 CREATE TABLE utilisateur (
     id_utilisateur VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,    
     nom VARCHAR(100) NOT NULL,

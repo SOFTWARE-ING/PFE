@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routes.ocr import router as ocr_router
+from Previous_settings.ocr import router as ocr_router
 from app.routes.login import router as login_router
 from app.routes.register import router as register_router
 from app.routes.search import router as search_router

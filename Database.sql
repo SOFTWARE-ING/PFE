@@ -159,19 +159,19 @@ CREATE INDEX idx_email_code_expiration ON signature_communiques_officiels.auth_e
 
 
 -- Table pour les secrets TOTP (Google Authenticator)
--- CREATE TABLE signature_communiques_officiels.utilisateur_2fa (
---     id_utilisateur VARCHAR(36) PRIMARY KEY,
---     totp_secret VARCHAR(32) NOT NULL,
---     date_activation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     est_active BOOLEAN DEFAULT TRUE,
---     CONSTRAINT fk_2fa_utilisateur 
---         FOREIGN KEY (id_utilisateur)
---         REFERENCES signature_communiques_officiels.utilisateur(id_utilisateur)
---         ON DELETE CASCADE
--- );
+CREATE TABLE signature_communiques_officiels.utilisateur_2fa (
+    id_utilisateur VARCHAR(36) PRIMARY KEY,
+    totp_secret VARCHAR(32) NOT NULL,
+    date_activation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    est_active BOOLEAN DEFAULT TRUE,
+    CONSTRAINT fk_2fa_utilisateur 
+        FOREIGN KEY (id_utilisateur)
+        REFERENCES signature_communiques_officiels.utilisateur(id_utilisateur)
+        ON DELETE CASCADE
+);
 
--- CREATE INDEX idx_2fa_utilisateur ON signature_communiques_officiels.utilisateur_2fa(id_utilisateur);
--- CREATE INDEX idx_2fa_active ON signature_communiques_officiels.utilisateur_2fa(est_active);
+CREATE INDEX idx_2fa_utilisateur ON signature_communiques_officiels.utilisateur_2fa(id_utilisateur);
+CREATE INDEX idx_2fa_active ON signature_communiques_officiels.utilisateur_2fa(est_active);
 
 
 -- ==============================================================================

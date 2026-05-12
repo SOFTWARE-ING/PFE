@@ -1,33 +1,67 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from app.services.ocr_service import OCRService
+"""
+ocr.py — Endpoint d'extraction de texte (OCR)
+==============================================
+Supporte : PDF, DOCX, PNG, JPG, JPEG, WEBP, BMP, TIFF
+"""
 
-router = APIRouter(prefix="/ocr", tags=["Extraction"])
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from app.services.ocr_service import OCRService, ALL_EXTENSIONS
+
+router = APIRouter(prefix="/ocr", tags=["Extraction OCR"])
+
 
 @router.post("/extract")
 async def extract_content(file: UploadFile = File(...)):
-    
-    # Liste des formats autorisés selon les besoins du projet
-    allowed_extensions = {'pdf', 'docx', 'png', 'jpg', 'jpeg'}
+    """
+    Extrait le texte d'un document uploadé.
 
-    # Recuperation de l'extention du fichier fournit
-    ext = file.filename.split('.')[-1].lower()
+    Formats supportés :
+      - Images  : PNG, JPG, JPEG, WEBP, BMP, TIFF  (y compris photos mobiles)
+      - PDF     : numérique ou scanné
+      - Word    : DOCX
 
-    # Verification du type de fichier
-    if ext not in allowed_extensions:
-        raise HTTPException(status_code=400, detail=f"Erreur de format .{ext}")
+    Le texte retourné est nettoyé (sans caractères parasites OCR).
+    """
+    # Récupération de l'extension
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+
+    # Vérification du format
+    if ext not in ALL_EXTENSIONS:
+        supported = ', '.join(sorted(ALL_EXTENSIONS))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Format '.{ext}' non supporté. Formats acceptés : {supported}"
+        )
 
     try:
-        # Lecture du fichier 
         content = await file.read()
 
-        # Extraction du text
-        extracted_text = OCRService.extract_text(content, file.filename)
-        
-        return{
-            "filname" : file.filename,
-            "extracted_text" : extracted_text,
-            "message" : "Contenu extrait avec succes pour indexation et recherche."
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        if not content:
+            raise HTTPException(status_code=400, detail="Le fichier est vide.")
 
+        extracted_text = OCRService.extract_text(content, file.filename)
+
+        if not extracted_text:
+            return {
+                "filename": file.filename,
+                "extracted_text": "",
+                "message": "Aucun texte détecté dans le document.",
+                "char_count": 0
+            }
+
+        return {
+            "filename": file.filename,
+            "extracted_text": extracted_text,
+            "message": "Texte extrait avec succès.",
+            "char_count": len(extracted_text)
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur inattendue lors de l'extraction : {str(e)}"
+        )

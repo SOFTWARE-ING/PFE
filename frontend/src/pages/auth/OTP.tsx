@@ -37,7 +37,12 @@ export default function OTP() {
       navigate("/login", { replace: true });
     }
   }, [state, navigate]);
-
+  // Auto-send email code on page load
+  useEffect(() => {
+    if (state?.temp_token) {
+      authAPI.requestEmail2FA(state.temp_token).catch(() => { });
+    }
+  }, []);
   // Countdown timer after resend
   useEffect(() => {
     if (countdown <= 0) return;
@@ -99,7 +104,7 @@ export default function OTP() {
       const res = await authAPI.verify2FA({
         temp_token: state.temp_token,
         code_2fa: code,
-        use_email: false,
+        use_email: true,
       });
 
       if (!res.success) {

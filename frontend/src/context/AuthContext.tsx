@@ -48,6 +48,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // Auto-logout when token expires
+  // useEffect(() => {
+  //   if (!token) return;
+  //   const interval = setInterval(() => {
+  //     authAPI.getMe().catch(() => {
+  //       tokenStorage.remove();
+  //       userStorage.remove();
+  //       setToken(null);
+  //       setUser(null);
+  //     });
+  //   }, 30 * 1000); // check every 30 seconds
+  //   return () => clearInterval(interval);
+  // }, [token]);
+
+  useEffect(() => {
+  if (!token) return;
+  const interval = setInterval(() => {
+    console.log("Checking token...");
+    authAPI.getMe().catch(() => {
+      console.log("Token expired — logging out");
+      tokenStorage.remove();
+      userStorage.remove();
+      setToken(null);
+      setUser(null);
+    });
+  }, 30 * 1000);
+  return () => clearInterval(interval);
+}, [token]);
+
   const setAuth = useCallback((newToken: string, newUser: UserInfo) => {
     tokenStorage.set(newToken);
     userStorage.set(newUser);

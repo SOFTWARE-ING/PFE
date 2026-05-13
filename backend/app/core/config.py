@@ -88,7 +88,7 @@
 #     DATABASE_URL: Optional[str] = None
 #     JWT_SECRET_KEY: Optional[str] = None
 #     JWT_ALGORITHM: str = "HS256"
-#     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+#     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 
 #     model_config = SettingsConfigDict(
 #         env_file=".env",          # charge le fichier .env
@@ -146,7 +146,7 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
     JWT_SECRET_KEY: Optional[str] = None
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).parent.parent.parent / ".env"),

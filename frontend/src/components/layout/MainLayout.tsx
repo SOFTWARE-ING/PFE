@@ -12,9 +12,15 @@ import {
   X,
   ChevronRight,
   Settings,
+  FolderOpen,
 } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { useAuth } from "../../context/AuthContext";
+
+// import {
+//   ShieldCheck, Search, Key, FileSignature, ScanText,
+//   User, LogOut, Menu, X, ChevronRight, Settings, FolderOpen,
+// } from "lucide-react";
 
 interface NavItem {
   to: string;
@@ -23,6 +29,36 @@ interface NavItem {
   roles?: string[];
 }
 
+// const navItems: NavItem[] = [
+//   {
+//     to: "/dashboard",
+//     label: "Recherche",
+//     icon: <Search size={18} />,
+//   },
+//   {
+//     to: "/dashboard/signatures",
+//     label: "Signatures",
+//     icon: <FileSignature size={18} />,
+//     roles: ["agent_officiel"],
+//   },
+//   {
+//     to: "/dashboard/keys",
+//     label: "Clés cryptographiques",
+//     icon: <Key size={18} />,
+//     roles: ["agent_officiel"],
+//   },
+//   {
+//     to: "/dashboard/ocr",
+//     label: "Extraction OCR",
+//     icon: <ScanText size={18} />,
+//   },
+//   {
+//     to: "/dashboard/profile",
+//     label: "Mon profil",
+//     icon: <User size={18} />,
+//   },
+// ];
+
 const navItems: NavItem[] = [
   {
     to: "/dashboard",
@@ -30,9 +66,21 @@ const navItems: NavItem[] = [
     icon: <Search size={18} />,
   },
   {
+    to: "/dashboard/sign",
+    label: "Signer un document",
+    icon: <FileSignature size={18} />,
+    roles: ["agent_officiel"],
+  },
+  {
+    to: "/dashboard/my-documents",
+    label: "Mes documents",
+    icon: <FolderOpen size={18} />,
+    roles: ["agent_officiel"],
+  },
+  {
     to: "/dashboard/signatures",
     label: "Signatures",
-    icon: <FileSignature size={18} />,
+    icon: <ShieldCheck size={18} />,
     roles: ["agent_officiel"],
   },
   {

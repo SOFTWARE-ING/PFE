@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Clock,
   TrendingUp,
+  Download,
   Loader2,
 } from "lucide-react";
 import { Card } from "../../components/ui/Card";
@@ -32,16 +33,59 @@ function StatusBadge({ statut }: { statut: string }) {
   );
 }
 
+// function ResultCard({ result }: { result: SearchResult }) {
+//   const { communique, score } = result;
+//   return (
+//     <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-5 bg-white dark:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
+//       <div className="flex items-start justify-between gap-3">
+//         <div className="flex items-center gap-2 min-w-0">
+//           <FileText
+//             size={16}
+//             className="text-indigo-500 dark:text-indigo-400 shrink-0"
+//           />
+//           <h3 className="font-medium text-slate-900 dark:text-slate-100 text-sm truncate">
+//             {communique.titre}
+//           </h3>
+//         </div>
+//         <div className="flex items-center gap-2 shrink-0">
+//           <StatusBadge statut={communique.statut} />
+//           <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono">
+//             #{score}
+//           </span>
+//         </div>
+//       </div>
+
+//       {communique.contenu && (
+//         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+//           {communique.contenu}
+//         </p>
+//       )}
+
+//       <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-400 dark:text-slate-500">
+//         {communique.date_publication && (
+//           <span className="flex items-center gap-1">
+//             <CalendarDays size={11} />
+//             {new Date(communique.date_publication).toLocaleDateString("fr-FR")}
+//           </span>
+//         )}
+//         {communique.auteur && (
+//           <span className="truncate">{communique.auteur}</span>
+//         )}
+//         <span className="font-mono text-[10px]">
+//           {communique.id_communique.slice(0, 8)}…
+//         </span>
+//       </div>
+//     </div>
+//   );
+// }
+
 function ResultCard({ result }: { result: SearchResult }) {
   const { communique, score } = result;
   return (
     <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-5 bg-white dark:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <FileText
-            size={16}
-            className="text-indigo-500 dark:text-indigo-400 shrink-0"
-          />
+          <FileText size={16} className="text-indigo-500 dark:text-indigo-400 shrink-0" />
           <h3 className="font-medium text-slate-900 dark:text-slate-100 text-sm truncate">
             {communique.titre}
           </h3>
@@ -60,19 +104,26 @@ function ResultCard({ result }: { result: SearchResult }) {
         </p>
       )}
 
-      <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-400 dark:text-slate-500">
-        {communique.date_publication && (
-          <span className="flex items-center gap-1">
-            <CalendarDays size={11} />
-            {new Date(communique.date_publication).toLocaleDateString("fr-FR")}
-          </span>
-        )}
-        {communique.auteur && (
-          <span className="truncate">{communique.auteur}</span>
-        )}
-        <span className="font-mono text-[10px]">
-          {communique.id_communique.slice(0, 8)}…
-        </span>
+      <div className="mt-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 text-[11px] text-slate-400 dark:text-slate-500">
+          {communique.date_publication && (
+            <span className="flex items-center gap-1">
+              <CalendarDays size={11} />
+              {new Date(communique.date_publication).toLocaleDateString("fr-FR")}
+            </span>
+          )}
+          {communique.auteur && <span className="truncate">{communique.auteur}</span>}
+          <span className="font-mono text-[10px]">{communique.id_communique.slice(0, 8)}…</span>
+        </div>
+        <a
+          href={`http://127.0.0.1:8000/api/documents/download/${communique.id_communique}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1 shrink-0 font-medium"
+        >
+          <Download size={11} />
+          Télécharger PDF
+        </a>
       </div>
     </div>
   );

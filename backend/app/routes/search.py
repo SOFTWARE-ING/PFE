@@ -12,7 +12,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from files.search_service_old import SearchService, AdvancedSearchService
+from app.services.search_service import SearchService, AdvancedSearchService
 from app.models.models import Communique
 from app.schemas.schemas import CommuniqueResponse, CommuniqueSummary
 

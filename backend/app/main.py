@@ -45,7 +45,7 @@ app.include_router(all_routers, prefix="/api")
 @app.get("/")
 async def root():
     return {
-        "message": "Magistral fastAPI/python3.10.16",
+        "message": "shield fastAPI/python3.10.16",
         "endpoints": {
             "ocr_extract": "/ocr/extract (POST)",
             "docs": "/docs (GET)"

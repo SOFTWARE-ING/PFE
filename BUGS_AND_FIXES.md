@@ -744,6 +744,8 @@ Index(
 ),
 ```
 
+
+
 ---
 
 ## Résumé des Priorités

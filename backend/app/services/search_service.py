@@ -171,12 +171,6 @@ class SearchService:
                         score += bonus
                         match_details.append(f"contenu_word:{word}x{count}")
             
-            # Mots rares
-            for word in query_words:
-                if word not in SearchService.STOP_WORDS and len(word) > 3:
-                    score += 2
-                    match_details.append(f"rare_word:{word}")
-            
             if score >= min_score:
                 results.append((doc, score, match_details))
         

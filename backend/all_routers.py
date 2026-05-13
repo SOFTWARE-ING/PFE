@@ -28,6 +28,7 @@ from app.routes.register import router as register_router
 from app.routes.search import router as search_router
 from app.routes.signatures import router as signatures_router
 from app.routes.keys import router as keys_router
+from app.routes.documents import router as documents_router
 
 router = APIRouter()
 
@@ -37,3 +38,4 @@ router.include_router(register_router)
 router.include_router(search_router)
 router.include_router(signatures_router)
 router.include_router(keys_router)
+router.include_router(documents_router)

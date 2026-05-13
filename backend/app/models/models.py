@@ -274,6 +274,8 @@ class Communique(Base):
         {"schema": "signature_communiques_officiels"}
     )
 
+    
+
     id_communique:    Mapped[str]            = mapped_column(String(36), primary_key=True, default=_new_uuid)
     titre:            Mapped[str]            = mapped_column(String(255), nullable=False)
     contenu:          Mapped[str]            = mapped_column(Text, nullable=False)
@@ -283,6 +285,11 @@ class Communique(Base):
     hash_contenu:     Mapped[str]            = mapped_column(String(255), nullable=False)
     qr_code:          Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     statut:           Mapped[str]            = mapped_column(String(50), default="BROUILLON", nullable=False)
+
+    contenu_normalise = Column(Text, nullable=True)
+    id_auteur = Column(String(36), ForeignKey('utilisateur.id_utilisateur'), nullable=True)
+    fichier_signe = Column(String(500), nullable=True)
+    est_archive = Column(Boolean, default=False)
 
     # ── Relations ──
     archives:      Mapped[List["Archive"]]                       = relationship(
@@ -442,6 +449,8 @@ class Signature(Base):
         DateTime(timezone=False), server_default=func.now(), nullable=False
     )
     est_valide:         Mapped[bool]     = mapped_column(Boolean, default=True, nullable=False)
+
+    metadata_qr = Column(Text, nullable=True)
 
     # ── Relations ──
     communique:     Mapped["Communique"]    = relationship(back_populates="signatures")

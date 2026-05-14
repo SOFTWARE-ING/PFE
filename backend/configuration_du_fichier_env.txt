@@ -14,7 +14,7 @@ DB_PASSWORD=securepassword
 # JWT
 JWT_SECRET_KEY=changez_cette_cle_en_production
 JWT_ALGORITHM=HS256
-JWT_EXPIRE_MINUTES=60
+JWT_EXPIRE_MINUTES=15
 
 # Bcrypt
 BCRYPT_ROUNDS=12
@@ -25,4 +25,13 @@ OTP_LENGTH=6
 
 # Clé Fernet pour chiffrer les clés privées RSA
 # Générez avec : python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-ENCRYPTION_KEY=votre_cle_fernet_generee_ici
+ENCRYPTION_KEY=eRecPLsGKUUj6PllLr7vBAwtLWBRr_-dsiOWEr1xEgI=
+
+# Connexion a sont compte gmail de lapplication
+MAIL_USERNAME=signaturenumerique.shield@gmail.com
+MAIL_PASSWORD=kzie vmwk ivad bycz
+MAIL_FROM=signaturenumerique.shield@gmail.com
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_TLS=True
+MAIL_SSL=False

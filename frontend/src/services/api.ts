@@ -122,7 +122,7 @@
 //     }),
 
 //   // getMe: () => apiFetch<UserInfo>("/auth/me"),
-  
+
 //   getMe: (token?: string) => apiFetch<UserInfo>("/auth/me", { token }),
 
 //   get2FAStatus: () => apiFetch<Status2FAResponse>("/auth/2fa/status"),
@@ -264,16 +264,17 @@ export interface UploadResponse {
   success: boolean;
   communique_id: string;
   titre: string;
-  contenu: string;
-  hash_contenu: string;
+  char_count: number;
+  hash: string;
   message: string;
 }
 
 export interface FinalizeResponse {
   success: boolean;
-  message: string;
   communique_id: string;
-  fichier_signe: string;
+  file_path: string;
+  file_size: number;
+  message: string;
 }
 
 export interface MyDocument {
@@ -424,32 +425,38 @@ export const ocrAPI = {
 
 export const documentsAPI = {
   // Step 1: upload PDF → extract text → create communique draft
-  upload: (file: File) => {
+  upload: (file: File, titre: string) => {
     const fd = new FormData();
     fd.append("file", file);
+    fd.append("titre", titre);
     return apiFetch<UploadResponse>("/documents/upload", { method: "POST", formData: fd });
   },
 
   // Step 2: finalize → embed QR at given coordinates → get signed PDF
-  finalize: (communique_id: string, qr_x: number, qr_y: number, qr_page: number, qr_size: number) =>
-    apiFetch<FinalizeResponse>("/documents/finalize", {
-      method: "POST",
-      body: { communique_id, qr_x, qr_y, qr_page, qr_size },
-    }),
+  finalize: (communique_id: string, signature_id: string, pdf_file: File, qr_x: number, qr_y: number, qr_size: number) => {
+    const fd = new FormData();
+    fd.append("communique_id", communique_id);
+    fd.append("signature_id", signature_id);
+    fd.append("pdf_file", pdf_file);
+    fd.append("qr_x", String(qr_x));
+    fd.append("qr_y", String(qr_y));
+    fd.append("qr_size", String(qr_size));
+    return apiFetch<FinalizeResponse>("/documents/finalize", { method: "POST", formData: fd });
+  },
 
   // Step 3: archive → set statut=PUBLIE, make searchable
-  archive: (communique_id: string) =>
-    apiFetch<{ success: boolean; message: string }>("/documents/archive", {
-      method: "POST",
-      body: { communique_id },
-    }),
+  archive: (communique_id: string) => {
+    const fd = new FormData();
+    fd.append("communique_id", communique_id);
+    return apiFetch<{ success: boolean; message: string }>("/documents/archive", { method: "POST", formData: fd });
+  },
 
   // List agent's own documents
-  myDocuments: () => apiFetch<MyDocumentsResponse>("/documents/my-documents"),
+  myDocuments: () => apiFetch<MyDocumentsResponse>("/documents/my"),
 
   // Download signed PDF
   downloadUrl: (communique_id: string) =>
-    `${API_URL}/documents/download/${communique_id}`,
+    `${API_URL}/documents/${communique_id}/download`,
 
   // Delete a document
   delete: (communique_id: string) =>
@@ -459,8 +466,7 @@ export const documentsAPI = {
 
   // Unarchive a document (remove from search)
   unarchive: (communique_id: string) =>
-    apiFetch<{ success: boolean; message: string }>("/documents/unarchive", {
-      method: "POST",
-      body: { communique_id },
+    apiFetch<{ success: boolean; message: string }>(`/documents/${communique_id}/unarchive`, {
+      method: "PATCH",
     }),
 };

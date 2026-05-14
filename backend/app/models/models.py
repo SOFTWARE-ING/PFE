@@ -287,7 +287,7 @@ class Communique(Base):
     statut:           Mapped[str]            = mapped_column(String(50), default="BROUILLON", nullable=False)
 
     contenu_normalise = Column(Text, nullable=True)
-    id_auteur = Column(String(36), ForeignKey('utilisateur.id_utilisateur'), nullable=True)
+    id_auteur = Column(String(36), ForeignKey('signature_communiques_officiels.utilisateur.id_utilisateur'), nullable=True)
     fichier_signe = Column(String(500), nullable=True)
     est_archive = Column(Boolean, default=False)
 

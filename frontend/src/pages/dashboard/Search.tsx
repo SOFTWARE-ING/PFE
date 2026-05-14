@@ -116,7 +116,7 @@ function ResultCard({ result }: { result: SearchResult }) {
           <span className="font-mono text-[10px]">{communique.id_communique.slice(0, 8)}…</span>
         </div>
         <a
-          href={`http://127.0.0.1:8000/api/documents/download/${communique.id_communique}`}
+          href={`http://127.0.0.1:8000/api/documents/${communique.id_communique}/download`}
           target="_blank"
           rel="noopener noreferrer"
           className="text-[11px] text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1 shrink-0 font-medium"

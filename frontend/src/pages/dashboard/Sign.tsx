@@ -9,7 +9,7 @@ import { Alert } from "../../components/ui/Alert";
 import { documentsAPI } from "../../services/api";
 import type { UploadResponse, FinalizeResponse } from "../../services/api";
 
-type Step = "upload" | "position" | "finalize" | "done";
+type Step = "upload" | "position" | "done";
 
 interface QRPosition {
   x: number;
@@ -27,29 +27,53 @@ export default function SignPage() {
   const [uploadData, setUploadData] = useState<UploadResponse | null>(null);
   const [finalizeData, setFinalizeData] = useState<FinalizeResponse | null>(null);
   const [archived, setArchived] = useState(false);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [signData, setSignData] = useState<{ signature_id: string; qr_code: string } | null>(null);
 
   const [qrPos, setQrPos] = useState<QRPosition>({ x: 50, y: 50, page: 1, size: 80 });
   const [isDragging, setIsDragging] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ mx: number; my: number; qx: number; qy: number } | null>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Step 1: Upload PDF ──────────────────────────────────────────────────
+  // ── Step 1: Upload + Sign ───────────────────────────────────────────────
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.endsWith(".pdf")) {
       setError("Veuillez sélectionner un fichier PDF.");
       return;
     }
+    const title = file.name.replace(".pdf", "").replace(/_/g, " ");
     setLoading(true);
     setError("");
     try {
-      const data = await documentsAPI.upload(file);
-      setUploadData(data);
+      // Step 1: Upload
+      const uploadResult = await documentsAPI.upload(file, title);
+      setUploadData(uploadResult);
+      setOriginalFile(file);
+
+      // Step 2: Sign automatically
+      const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
+      const token = localStorage.getItem("shield_token");
+      const fd = new FormData();
+      fd.append("communique_id", uploadResult.communique_id);
+
+      const signRes = await fetch(`${API_URL}/documents/sign`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+
+      if (!signRes.ok) {
+        const err = await signRes.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? `Erreur signature: ${signRes.status}`);
+      }
+
+      const signJson = await signRes.json() as { signature_id: string; qr_code: string };
+      setSignData({ signature_id: signJson.signature_id, qr_code: signJson.qr_code });
       setStep("position");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors du téléversement.");
+      setError(e instanceof Error ? e.message : "Erreur inattendue. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -82,20 +106,27 @@ export default function SignPage() {
 
   const onMouseUp = () => setIsDragging(false);
 
-  // ── Step 3: Finalize (embed QR) ────────────────────────────────────────
+  // ── Step 3: Finalize (embed QR into PDF) ───────────────────────────────
 
   const handleFinalize = async () => {
-    if (!uploadData) return;
+    if (!uploadData || !signData || !originalFile || !previewRef.current) return;
     setLoading(true);
     setError("");
     try {
-      // Convert pixel position to PDF points (approximate: assume preview is 595px wide = A4)
-      const previewW = previewRef.current?.offsetWidth ?? 595;
-      const previewH = previewRef.current?.offsetHeight ?? 842;
-      const pdfW = 595; const pdfH = 842;
+      const previewW = previewRef.current.offsetWidth;
+      const previewH = previewRef.current.offsetHeight;
+      const pdfW = 595;
+      const pdfH = 842;
       const pdfX = (qrPos.x / previewW) * pdfW;
-      const pdfY = pdfH - ((qrPos.y + qrPos.size) / previewH) * pdfH; // flip Y axis
-      const data = await documentsAPI.finalize(uploadData.communique_id, pdfX, pdfY, qrPos.page, qrPos.size);
+      const pdfY = pdfH - ((qrPos.y + qrPos.size) / previewH) * pdfH;
+      const data = await documentsAPI.finalize(
+        uploadData.communique_id,
+        signData.signature_id,
+        originalFile,
+        pdfX,
+        pdfY,
+        qrPos.size
+      );
       setFinalizeData(data);
       setStep("done");
     } catch (e: unknown) {
@@ -125,12 +156,14 @@ export default function SignPage() {
     setStep("upload");
     setUploadData(null);
     setFinalizeData(null);
+    setSignData(null);
+    setOriginalFile(null);
     setArchived(false);
     setError("");
     setQrPos({ x: 50, y: 50, page: 1, size: 80 });
   };
 
-  // ── Stepper UI ─────────────────────────────────────────────────────────
+  // ── Stepper ────────────────────────────────────────────────────────────
 
   const steps = [
     { key: "upload", label: "Téléverser" },
@@ -142,6 +175,7 @@ export default function SignPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
@@ -159,19 +193,24 @@ export default function SignPage() {
             <div className="flex items-center gap-2">
               <div className={[
                 "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
-                i < stepIndex ? "bg-emerald-500 text-white" :
-                i === stepIndex ? "bg-indigo-600 text-white" :
-                "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                i < stepIndex
+                  ? "bg-emerald-500 text-white"
+                  : i === stepIndex
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400",
               ].join(" ")}>
                 {i < stepIndex ? <CheckCircle size={14} /> : i + 1}
               </div>
               <span className={[
                 "text-xs font-medium hidden sm:block",
-                i === stepIndex ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
+                i === stepIndex ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400",
               ].join(" ")}>{s.label}</span>
             </div>
             {i < steps.length - 1 && (
-              <div className={["flex-1 h-px", i < stepIndex ? "bg-emerald-400" : "bg-slate-200 dark:bg-slate-700"].join(" ")} />
+              <div className={[
+                "flex-1 h-px",
+                i < stepIndex ? "bg-emerald-400" : "bg-slate-200 dark:bg-slate-700",
+              ].join(" ")} />
             )}
           </React.Fragment>
         ))}
@@ -187,7 +226,7 @@ export default function SignPage() {
               "relative border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer",
               dragOver
                 ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30"
-                : "border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700"
+                : "border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700",
             ].join(" ")}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
@@ -204,7 +243,9 @@ export default function SignPage() {
             {loading ? (
               <div className="flex flex-col items-center gap-3">
                 <Loader2 size={36} className="animate-spin text-indigo-500" />
-                <p className="text-sm text-slate-600 dark:text-slate-400">Extraction du contenu en cours…</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Téléversement et signature en cours…
+                </p>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-3">
@@ -228,6 +269,7 @@ export default function SignPage() {
       {/* ── STEP 2: Position QR ── */}
       {step === "position" && uploadData && (
         <div className="space-y-4">
+
           {/* Document info */}
           <Card padding="sm">
             <div className="flex items-center gap-3">
@@ -237,7 +279,7 @@ export default function SignPage() {
                   {uploadData.titre}
                 </p>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  Hash: {uploadData.hash_contenu.slice(0, 24)}…
+                  Hash: {uploadData.hash?.slice(0, 24)}…
                 </p>
               </div>
               <CheckCircle size={16} className="text-emerald-500 shrink-0 ml-auto" />
@@ -253,7 +295,9 @@ export default function SignPage() {
                 onChange={(e) => setQrPos((p) => ({ ...p, size: Number(e.target.value) }))}
                 className="flex-1"
               />
-              <span className="text-xs font-mono text-slate-600 dark:text-slate-300 w-10 text-right">{qrPos.size}px</span>
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-300 w-10 text-right">
+                {qrPos.size}px
+              </span>
             </div>
           </Card>
 
@@ -273,9 +317,10 @@ export default function SignPage() {
               onMouseUp={onMouseUp}
               onMouseLeave={onMouseUp}
             >
-              {/* Simulated page */}
-              <div className="mx-auto bg-white dark:bg-slate-900 shadow-lg"
-                style={{ width: "100%", minHeight: 500, position: "relative" }}>
+              <div
+                className="mx-auto bg-white dark:bg-slate-900 shadow-lg"
+                style={{ width: "100%", minHeight: 500, position: "relative" }}
+              >
                 {/* Simulated text lines */}
                 <div className="p-8 space-y-3 pointer-events-none">
                   <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mx-auto" />
@@ -294,26 +339,34 @@ export default function SignPage() {
                   <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-5/6" />
                 </div>
 
-                {/* Draggable QR placeholder */}
+                {/* Draggable QR */}
                 <div
                   className="absolute border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg"
-                  style={{
-                    left: qrPos.x, top: qrPos.y,
-                    width: qrPos.size, height: qrPos.size,
-                  }}
+                  style={{ left: qrPos.x, top: qrPos.y, width: qrPos.size, height: qrPos.size }}
                   onMouseDown={onMouseDown}
                 >
-                  <div className="text-center pointer-events-none">
-                    <div className="grid grid-cols-3 gap-0.5 w-8 mx-auto mb-1">
-                      {[...Array(9)].map((_, i) => (
-                        <div key={i} className={["w-2 h-2 rounded-sm",
-                          [0,2,6,8].includes(i) ? "bg-indigo-600 dark:bg-indigo-400" :
-                          i === 4 ? "bg-indigo-400" : "bg-indigo-200 dark:bg-indigo-700"
-                        ].join(" ")} />
-                      ))}
+                  {signData?.qr_code ? (
+                    <img
+                      src={signData.qr_code}
+                      alt="QR"
+                      className="w-full h-full object-contain pointer-events-none rounded"
+                    />
+                  ) : (
+                    <div className="text-center pointer-events-none">
+                      <div className="grid grid-cols-3 gap-0.5 w-8 mx-auto mb-1">
+                        {[...Array(9)].map((_, i) => (
+                          <div key={i} className={["w-2 h-2 rounded-sm",
+                            [0, 2, 6, 8].includes(i)
+                              ? "bg-indigo-600 dark:bg-indigo-400"
+                              : i === 4
+                              ? "bg-indigo-400"
+                              : "bg-indigo-200 dark:bg-indigo-700",
+                          ].join(" ")} />
+                        ))}
+                      </div>
+                      <span className="text-[8px] text-indigo-600 dark:text-indigo-400 font-bold">QR</span>
                     </div>
-                    <span className="text-[8px] text-indigo-600 dark:text-indigo-400 font-bold">QR</span>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -323,14 +376,18 @@ export default function SignPage() {
             <Button variant="secondary" onClick={handleReset} icon={<RotateCcw size={14} />}>
               Recommencer
             </Button>
-            <Button onClick={() => void handleFinalize()} loading={loading} icon={<CheckCircle size={14} />}>
+            <Button
+              onClick={() => void handleFinalize()}
+              loading={loading}
+              icon={<CheckCircle size={14} />}
+            >
               Valider la position
             </Button>
           </div>
         </div>
       )}
 
-      {/* ── STEP 4: Done ── */}
+      {/* ── STEP 3: Done ── */}
       {step === "done" && finalizeData && (
         <div className="space-y-4">
           <Card padding="md">
@@ -358,7 +415,9 @@ export default function SignPage() {
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                     {uploadData?.titre}
                   </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Document signé prêt au téléchargement</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                    Document signé prêt au téléchargement
+                  </p>
                 </div>
               </div>
               <a
@@ -388,7 +447,12 @@ export default function SignPage() {
                     Les documents non archivés restent privés.
                   </p>
                   <div className="flex gap-2 mt-3">
-                    <Button size="sm" onClick={() => void handleArchive()} loading={loading} icon={<Archive size={13} />}>
+                    <Button
+                      size="sm"
+                      onClick={() => void handleArchive()}
+                      loading={loading}
+                      icon={<Archive size={13} />}
+                    >
                       Oui, archiver
                     </Button>
                     <Button size="sm" variant="secondary" onClick={handleReset}>

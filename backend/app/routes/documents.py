@@ -8,7 +8,7 @@ GET  /api/documents/my         → List agent's documents
 GET  /api/documents/{id}/download → Download signed PDF
 DELETE /api/documents/{id}     → Delete document
 PATCH /api/documents/{id}/unarchive → Unarchive
-GET  /api/documents/{id}/verify → Verify document authenticity (public)
+POST /api/documents/verify     → Verify document authenticity (public)
 """
 
 import base64
@@ -70,7 +70,6 @@ async def upload_document(
 
     content = await file.read()
 
-    # Extract text via OCR
     extracted_text = OCRService.extract_text(content, file.filename)
     if not extracted_text.strip():
         raise HTTPException(status_code=400, detail="Impossible d'extraire le texte du document.")
@@ -118,7 +117,6 @@ def sign_document(
     if not result.success:
         raise HTTPException(status_code=400, detail=result.message)
 
-    # Get public key fingerprint
     cle = db.query(CleCryptographique).filter(
         CleCryptographique.id_agent_officiel == user_id
     ).order_by(CleCryptographique.date_creation.desc()).first()
@@ -127,12 +125,10 @@ def sign_document(
     if cle:
         key_fingerprint = hashlib.sha256(cle.cle_publique.encode()).hexdigest()[:16]
 
-    # Get the signature just created
     sig = db.query(Signature).filter(
         Signature.id_signature == result.signature_id
     ).first()
 
-    # Build QR metadata — this is what gets embedded in QR code
     qr_metadata = {
         "v": "1",
         "sig_id": result.signature_id,
@@ -144,12 +140,10 @@ def sign_document(
         "ts": datetime.utcnow().isoformat()
     }
 
-    # Store metadata in signature
     if sig:
         sig.metadata_qr = json.dumps(qr_metadata)
         db.commit()
 
-    # Generate QR code image
     import qrcode
     qr_data = json.dumps(qr_metadata)
     qr = qrcode.QRCode(
@@ -205,13 +199,18 @@ async def finalize_document(
     if not sig or not sig.metadata_qr:
         raise HTTPException(status_code=404, detail="Signature non trouvée")
 
-    # Generate QR image
     import qrcode
-    from reportlab.lib.pagesizes import A4
+    from PIL import Image as PILImage
+    from reportlab.lib.utils import ImageReader
     from reportlab.pdfgen import canvas
     import PyPDF2
 
-    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=8, border=2)
+    # Generate QR image
+    qr = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=8,
+        border=2
+    )
     qr.add_data(sig.metadata_qr)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")
@@ -219,19 +218,22 @@ async def finalize_document(
     qr_img.save(qr_buffer, format='PNG')
     qr_buffer.seek(0)
 
+    # Convert BytesIO to ImageReader so ReportLab can draw it
+    qr_pil = PILImage.open(qr_buffer)
+    qr_reader = ImageReader(qr_pil)
+
     # Read original PDF
     pdf_content = await pdf_file.read()
     original_pdf = PyPDF2.PdfReader(BytesIO(pdf_content))
 
-    # Create overlay with QR code
+    # Create overlay with QR code at given coordinates
     overlay_buffer = BytesIO()
-    c = canvas.Canvas(overlay_buffer, pagesize=A4)
     page = original_pdf.pages[0]
     page_width = float(page.mediabox.width)
     page_height = float(page.mediabox.height)
-    c.setPageSize((page_width, page_height))
-    # Draw QR at position (qr_x from left, qr_y from bottom)
-    c.drawImage(qr_buffer, qr_x, qr_y, width=qr_size, height=qr_size)
+
+    c = canvas.Canvas(overlay_buffer, pagesize=(page_width, page_height))
+    c.drawImage(qr_reader, qr_x, qr_y, width=qr_size, height=qr_size)
     c.save()
 
     # Merge overlay onto original PDF
@@ -244,12 +246,11 @@ async def finalize_document(
             page.merge_page(overlay_pdf.pages[0])
         writer.add_page(page)
 
-    # Save final PDF
+    # Save final PDF to disk
     output_buffer = BytesIO()
     writer.write(output_buffer)
     output_buffer.seek(0)
 
-    # Store file on disk
     filename = f"{communique_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_signed.pdf"
     file_path = UPLOAD_DIR / filename
     with open(file_path, 'wb') as f:
@@ -289,7 +290,6 @@ async def archive_document(
     if not communique:
         raise HTTPException(status_code=404, detail="Communiqué non trouvé")
 
-    # If a new file is provided (re-upload case)
     if pdf_file:
         content = await pdf_file.read()
         filename = f"{communique_id}_archived.pdf"
@@ -307,7 +307,6 @@ async def archive_document(
     communique.est_archive = True
     communique.date_publication = datetime.utcnow()
 
-    # Create archive record
     archive = Archive(
         id_archive=str(uuid.uuid4()),
         id_communique=communique_id,
@@ -458,21 +457,16 @@ async def verify_document(
 
     sig_id = metadata.get("sig_id")
     com_id = metadata.get("com_id")
-    encrypted_hash = metadata.get("encrypted_hash", "")
-    key_fp = metadata.get("key_fp", "")
 
-    # Get signature and communique from DB
     sig = db.query(Signature).filter(Signature.id_signature == sig_id).first()
     communique = db.query(Communique).filter(Communique.id_communique == com_id).first()
 
     if not sig or not communique:
         return {"verified": False, "message": "❌ Document introuvable dans la base de données."}
 
-    # Verify cryptographic signature
     sig_service = SignatureService(db)
     result = sig_service.verify_signature(sig_id)
 
-    # Also compare with uploaded document text
     content = await file.read()
     extracted_text = OCRService.extract_text(content, file.filename)
     uploaded_normalized = OCRService.normalize(extracted_text)
@@ -480,7 +474,6 @@ async def verify_document(
 
     content_match = (uploaded_normalized == stored_normalized) if uploaded_normalized else None
 
-    # Get agent info
     agent_user = db.query(Utilisateur).filter(Utilisateur.id_utilisateur == sig.id_agent_officiel).first()
     agent_info = db.query(AgentOfficiel).filter(AgentOfficiel.id_utilisateur == sig.id_agent_officiel).first()
 

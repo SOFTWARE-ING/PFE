@@ -1,6 +1,11 @@
 export default {
   darkMode: "class",
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+
   theme: {
     extend: {
       colors: {
@@ -10,10 +15,9 @@ export default {
           accent: "#0EA5E9",
         },
 
-        // 🔥 BETTER LIGHT MODE (not white)
         surface: {
-          light: "#F4F7FB",   // soft gray-blue
-          dark: "#0F172A",    // not fully black
+          light: "#F4F7FB",
+          dark: "#0F172A",
         },
 
         card: {
@@ -36,5 +40,6 @@ export default {
       },
     },
   },
+
   plugins: [],
 };

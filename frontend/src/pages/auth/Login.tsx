@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogIn } from "lucide-react";
+import { Mail, Lock, LogIn } from "lucide-react";
 import { AuthLayout } from "../../components/layout/AuthLayout";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
@@ -50,7 +50,6 @@ export default function Login() {
       }
 
       if (res.requires_2fa) {
-        // Redirect to OTP page with the temporary token
         navigate("/otp", {
           state: {
             temp_token: res.access_token,
@@ -60,8 +59,6 @@ export default function Login() {
           replace: true,
         });
       } else {
-        // Login without 2FA — fetch user info and go to dashboard
-        // const me = await authAPI.getMe();
         const me = await authAPI.getMe(res.access_token);
         setAuth(res.access_token, me);
         navigate(from, { replace: true });
@@ -78,30 +75,37 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout
-      title="Connexion"
-      subtitle="Accédez à votre espace sécurisé de signature officielle"
-    >
+    <AuthLayout>
       <Card>
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-green-100">
+          Secure Access Portal
+        </h2>
+
+        <p className="text-center text-sm text-gray-500 dark:text-green-400/70 mt-1 mb-6">
+          Enter your credentials to continue
+        </p>
+
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <Input
-            label="Adresse email"
+            label="Email"
             name="email"
             type="email"
-            placeholder="agent@gouv.sn"
+            placeholder="agent@gouv.org"
             value={form.email}
             onChange={handleChange}
+            icon={Mail}
             autoComplete="email"
             required
           />
 
           <Input
-            label="Mot de passe"
+            label="Password"
             name="mot_de_passe"
             type="password"
             placeholder="••••••••"
             value={form.mot_de_passe}
             onChange={handleChange}
+            icon={Lock}
             autoComplete="current-password"
             required
           />
@@ -114,13 +118,9 @@ export default function Login() {
             icon={<LogIn size={16} />}
             className="w-full"
           >
-            {loading ? "Connexion…" : "Se connecter"}
+            {loading ? "Connexion…" : "Login"}
           </Button>
         </form>
-
-        <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-600">
-          Plateforme réservée aux agents officiels habilités
-        </p>
       </Card>
     </AuthLayout>
   );

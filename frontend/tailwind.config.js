@@ -1,45 +1,25 @@
+/** @type {import('tailwindcss').Config} */
 export default {
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: "class",
-
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-
   theme: {
     extend: {
       colors: {
-        brand: {
-          primary: "#2563EB",
-          secondary: "#7C3AED",
-          accent: "#0EA5E9",
-        },
-
-        surface: {
-          light: "#F4F7FB",
-          dark: "#0F172A",
-        },
-
-        card: {
-          light: "#FFFFFF",
-          dark: "#1E293B",
-        },
-
-        border: {
-          light: "#E2E8F0",
-          dark: "#334155",
-        },
-
-        text: {
-          primaryLight: "#0F172A",
-          secondaryLight: "#475569",
-
-          primaryDark: "#E2E8F0",
-          secondaryDark: "#94A3B8",
+        army: {
+          50:  "#f2f7ec",
+          100: "#e0ecd1",
+          200: "#c3dba5",
+          300: "#9fc472",
+          400: "#7aab44",
+          500: "#5d8f2e",
+          600: "#4a7223",
+          700: "#3a581b",
+          800: "#2e4415",
+          900: "#243310",
+          950: "#141d08",
         },
       },
     },
   },
-
   plugins: [],
 };

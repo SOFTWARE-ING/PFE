@@ -87,10 +87,10 @@ export default function MyDocumentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+          <h1 className="text-xl font-semibold text-army-900 dark:text-army-50">
             Mes documents
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-sm text-army-500 dark:text-army-400 mt-0.5">
             Gérez vos documents signés et leur visibilité publique.
           </p>
         </div>
@@ -104,16 +104,16 @@ export default function MyDocumentsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={24} className="animate-spin text-indigo-500" />
+          <Loader2 size={24} className="animate-spin text-army-600" />
         </div>
       ) : docs.length === 0 ? (
         <Card>
           <div className="py-16 text-center">
-            <FileText size={36} className="mx-auto text-slate-300 dark:text-slate-700 mb-3" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <FileText size={36} className="mx-auto text-army-300 dark:text-army-700 mb-3" />
+            <p className="text-sm text-army-500 dark:text-army-400">
               Aucun document signé pour le moment.
             </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+            <p className="text-xs text-army-400 dark:text-army-500 mt-1">
               Utilisez la page <span className="font-medium">Signer un document</span> pour commencer.
             </p>
           </div>
@@ -121,7 +121,7 @@ export default function MyDocumentsPage() {
       ) : (
         <div className="space-y-3">
           {/* Summary bar */}
-          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 px-1">
+          <div className="flex items-center gap-4 text-xs text-army-500 dark:text-army-400 px-1">
             <span>{docs.length} document{docs.length > 1 ? "s" : ""} au total</span>
             <span className="text-emerald-600 dark:text-emerald-400">
               {docs.filter((d) => d.est_archive).length} archivé{docs.filter((d) => d.est_archive).length > 1 ? "s" : ""}
@@ -136,18 +136,18 @@ export default function MyDocumentsPage() {
             return (
               <div
                 key={doc.id_communique}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"
+                className="bg-white dark:bg-army-900 border border-army-200 dark:border-army-800 rounded-xl p-4 hover:border-army-600 dark:hover:border-army-600 transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <FileText size={16} className="text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5" />
+                  <FileText size={16} className="text-army-600 dark:text-army-600 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                      <p className="text-sm font-medium text-army-800 dark:text-army-200 truncate">
                         {doc.titre}
                       </p>
                       <StatusPill doc={doc} />
                     </div>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 font-mono">
+                    <p className="text-[11px] text-army-400 dark:text-army-500 mt-1 font-mono">
                       {doc.id_communique.slice(0, 16)}… · {new Date(doc.date_creation).toLocaleDateString("fr-FR")}
                     </p>
                     {!doc.est_archive && (

@@ -28,21 +28,21 @@ export const Input: React.FC<InputProps> = ({
       {label && (
         <label
           htmlFor={inputId}
-          className="text-sm font-medium text-gray-600 dark:text-green-300/80"
+          className="text-sm font-medium text-army-700 dark:text-army-300/90"
         >
           {label}
         </label>
       )}
 
       <div className={[
-        "flex items-center gap-3 px-4 py-3 rounded-xl border transition",
-        "bg-white/80 dark:bg-[#1e2d0a]/80",
+        "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-150",
+        "bg-army-50/60 dark:bg-[#1a2609]/80",
         error
-          ? "border-rose-400 focus-within:ring-2 focus-within:ring-rose-400"
-          : "border-gray-200 dark:border-green-900/60 focus-within:ring-2 focus-within:ring-green-500/60 dark:focus-within:ring-green-600/50",
+          ? "border-rose-400 focus-within:ring-2 focus-within:ring-rose-400/50"
+          : "border-army-200 dark:border-army-800/70 focus-within:ring-2 focus-within:ring-army-500/50 dark:focus-within:ring-army-600/50 focus-within:border-army-400 dark:focus-within:border-army-600",
       ].join(" ")}>
         {Icon && (
-          <Icon size={18} className="text-gray-400 dark:text-green-600 shrink-0" />
+          <Icon size={18} className="text-army-400 dark:text-army-600 shrink-0" />
         )}
 
         <input
@@ -50,8 +50,8 @@ export const Input: React.FC<InputProps> = ({
           type={isPassword && show ? "text" : type}
           className={[
             "w-full bg-transparent outline-none text-sm",
-            "text-gray-900 dark:text-green-100",
-            "placeholder:text-gray-400 dark:placeholder:text-green-700",
+            "text-army-900 dark:text-army-100",
+            "placeholder:text-army-400 dark:placeholder:text-army-700",
             isPassword ? "pr-2" : "",
             className,
           ].join(" ")}
@@ -63,7 +63,7 @@ export const Input: React.FC<InputProps> = ({
             type="button"
             tabIndex={-1}
             onClick={() => setShow((s) => !s)}
-            className="text-gray-400 dark:text-green-600 hover:text-gray-600 dark:hover:text-green-400 transition-colors"
+            className="text-army-400 dark:text-army-600 hover:text-army-600 dark:hover:text-army-400 transition-colors"
           >
             {show ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -71,7 +71,7 @@ export const Input: React.FC<InputProps> = ({
       </div>
 
       {error && <p className="text-xs text-rose-500">{error}</p>}
-      {hint && !error && <p className="text-xs text-gray-400 dark:text-green-700">{hint}</p>}
+      {hint && !error && <p className="text-xs text-army-500 dark:text-army-700">{hint}</p>}
     </div>
   );
 };

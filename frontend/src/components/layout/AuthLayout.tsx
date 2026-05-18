@@ -3,8 +3,6 @@ import { ThemeToggle } from "../ui/ThemeToggle";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
-  title?: string;
-  subtitle?: string;
 }
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
@@ -17,11 +15,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
         {/* Gradient base */}
         <div className="absolute inset-0 bg-gradient-to-br
           from-green-200/40 via-lime-100/30 to-emerald-200/40
-          dark:from-army-900/60 dark:via-army-950/80 dark:to-green-950/50"
-          style={{
-            "--army-900": "#2e3e14",
-            "--army-950": "#1a2509",
-          } as React.CSSProperties}
+          dark:from-[#2e3e14]/60 dark:via-[#1a2509]/80 dark:to-[#1a2f0a]/50"
         />
 
         {/* Cyber Grid */}
@@ -50,11 +44,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
           {/* Glow blob */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
             w-[400px] h-[400px] rounded-full
-            bg-green-500/10 dark:bg-green-800/15 blur-3xl" />
+            bg-green-500/10 dark:bg-green-800/15 blur-2xl" />
         </div>
       </div>
 
-      {/* ThemeToggle — top-right, no navbar */}
+      {/* ThemeToggle — top-right */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>

@@ -86,10 +86,10 @@ export default function OCRPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+        <h1 className="text-xl font-semibold text-army-900 dark:text-army-50">
           Extraction OCR
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+        <p className="text-sm text-army-500 dark:text-army-400 mt-0.5">
           Extrayez le texte de vos documents pour indexation et recherche
         </p>
       </div>
@@ -107,8 +107,8 @@ export default function OCRPage() {
         className={[
           "cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-150 p-10 text-center",
           dragging
-            ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30"
-            : "border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-slate-50 dark:hover:bg-slate-900/50 bg-white dark:bg-slate-900",
+            ? "border-army-600 bg-army-600 dark:bg-army-600/30"
+            : "border-army-200 dark:border-army-800 hover:border-army-600 dark:hover:border-army-600 hover:bg-army-50 dark:hover:bg-army-900/50 bg-white dark:bg-army-900",
         ].join(" ")}
       >
         <input
@@ -126,13 +126,13 @@ export default function OCRPage() {
           <div className="flex items-center justify-center gap-3">
             <FileText
               size={24}
-              className="text-indigo-500 dark:text-indigo-400 shrink-0"
+              className="text-army-600 dark:text-army-600 shrink-0"
             />
             <div className="text-left">
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+              <p className="text-sm font-medium text-army-800 dark:text-army-200">
                 {file.name}
               </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
+              <p className="text-xs text-army-400 dark:text-army-500">
                 {(file.size / 1024).toFixed(1)} Ko
               </p>
             </div>
@@ -141,7 +141,7 @@ export default function OCRPage() {
                 e.stopPropagation();
                 reset();
               }}
-              className="ml-2 p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              className="ml-2 p-1 rounded-md hover:bg-army-200 dark:hover:bg-army-700 text-army-400 hover:text-army-600 dark:hover:text-army-300 transition-colors"
             >
               <X size={16} />
             </button>
@@ -150,12 +150,12 @@ export default function OCRPage() {
           <>
             <Upload
               size={32}
-              className="mx-auto text-slate-300 dark:text-slate-700 mb-3"
+              className="mx-auto text-army-300 dark:text-army-700 mb-3"
             />
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+            <p className="text-sm font-medium text-army-600 dark:text-army-400">
               Glissez-déposez un fichier ici ou cliquez pour parcourir
             </p>
-            <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">
+            <p className="text-xs text-army-400 dark:text-army-600 mt-1">
               PDF, DOCX, PNG, JPG, JPEG · Max 20 Mo
             </p>
           </>
@@ -178,13 +178,13 @@ export default function OCRPage() {
       {/* Result */}
       {result && (
         <Card padding="none">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-army-200 dark:border-army-800">
             <div className="flex items-center gap-2">
               <ScanText
                 size={16}
-                className="text-indigo-500 dark:text-indigo-400"
+                className="text-army-600 dark:text-army-600"
               />
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              <span className="text-sm font-semibold text-army-800 dark:text-army-200">
                 Texte extrait — {result.filname}
               </span>
             </div>
@@ -203,12 +203,12 @@ export default function OCRPage() {
             </div>
           </div>
           <div className="p-5">
-            <pre className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed font-mono max-h-96 overflow-y-auto">
+            <pre className="text-xs text-army-700 dark:text-army-300 whitespace-pre-wrap leading-relaxed font-mono max-h-96 overflow-y-auto">
               {result.extracted_text || "(Aucun texte extrait)"}
             </pre>
           </div>
-          <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 rounded-b-xl">
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+          <div className="px-5 py-3 border-t border-army-100 dark:border-army-800 bg-army-50 dark:bg-army-800/40 rounded-b-xl">
+            <p className="text-[11px] text-army-400 dark:text-army-500">
               {result.extracted_text.length} caractères extraits ·{" "}
               {result.message}
             </p>
@@ -221,9 +221,9 @@ export default function OCRPage() {
         <div className="flex items-start gap-3">
           <Loader2
             size={16}
-            className="text-indigo-400 dark:text-indigo-500 mt-0.5 shrink-0"
+            className="text-army-600 dark:text-army-600 mt-0.5 shrink-0"
           />
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          <p className="text-xs text-army-500 dark:text-army-400 leading-relaxed">
             Le texte extrait peut être utilisé pour l'indexation et la
             recherche. Les documents PDF et images utilisent Tesseract OCR ;
             les fichiers DOCX sont traités en natif. Assurez-vous que les

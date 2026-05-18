@@ -18,7 +18,7 @@ import type { SignatureListItem } from "../../types";
 
 function SignatureRow({ sig }: { sig: SignatureListItem }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
+    <div className="flex items-start gap-3 py-3 border-b border-army-100 dark:border-army-800 last:border-0">
       <div
         className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
           sig.est_valide
@@ -36,14 +36,14 @@ function SignatureRow({ sig }: { sig: SignatureListItem }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+        <p className="text-sm font-medium text-army-800 dark:text-army-200 truncate">
           {sig.titre_communique}
         </p>
         <div className="flex items-center gap-3 mt-0.5">
-          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+          <span className="text-[11px] text-army-400 dark:text-army-500 font-mono">
             {sig.id_signature.slice(0, 12)}…
           </span>
-          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+          <span className="text-[11px] text-army-400 dark:text-army-500">
             {new Date(sig.date_signature).toLocaleString("fr-FR")}
           </span>
         </div>
@@ -135,10 +135,10 @@ export default function SignaturesPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+        <h1 className="text-xl font-semibold text-army-900 dark:text-army-50">
           Signatures numériques
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+        <p className="text-sm text-army-500 dark:text-army-400 mt-0.5">
           Signez des communiqués et vérifiez leur authenticité
         </p>
       </div>
@@ -149,9 +149,9 @@ export default function SignaturesPage() {
           <div className="flex items-center gap-2 mb-4">
             <FileSignature
               size={18}
-              className="text-indigo-600 dark:text-indigo-400"
+              className="text-army-600 dark:text-army-600"
             />
-            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            <h2 className="text-sm font-semibold text-army-800 dark:text-army-200">
               Signer un communiqué
             </h2>
           </div>
@@ -189,7 +189,7 @@ export default function SignaturesPage() {
               size={18}
               className="text-emerald-600 dark:text-emerald-400"
             />
-            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            <h2 className="text-sm font-semibold text-army-800 dark:text-army-200">
               Vérifier une signature
             </h2>
           </div>
@@ -222,7 +222,7 @@ export default function SignaturesPage() {
       {/* My signatures list */}
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+          <h2 className="text-sm font-semibold text-army-800 dark:text-army-200">
             Mes signatures ({signatures.length})
           </h2>
           <Button
@@ -241,16 +241,16 @@ export default function SignaturesPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2
               size={20}
-              className="animate-spin text-indigo-500 dark:text-indigo-400"
+              className="animate-spin text-army-600 dark:text-army-600"
             />
           </div>
         ) : signatures.length === 0 ? (
           <div className="py-12 text-center">
             <FileSignature
               size={32}
-              className="mx-auto text-slate-300 dark:text-slate-700 mb-3"
+              className="mx-auto text-army-300 dark:text-army-700 mb-3"
             />
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-army-500 dark:text-army-400">
               Aucune signature enregistrée.
             </p>
           </div>

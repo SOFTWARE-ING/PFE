@@ -7,7 +7,7 @@ interface AuthLayoutProps {
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-200 dark:bg-[#1a2509] transition-colors duration-500">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-200 dark:bg-dark-900 transition-colors duration-500">
 
       {/* ===== BACKGROUND ===== */}
       <div className="absolute inset-0 overflow-hidden">
@@ -44,7 +44,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
           {/* Glow blob */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
             w-[400px] h-[400px] rounded-full
-            bg-green-500/10 dark:bg-green-800/15 blur-2xl" />
+            bg-green-500/10 dark:bg-green-800/15 blur-3xl" />
         </div>
       </div>
 

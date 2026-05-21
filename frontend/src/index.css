@@ -9,7 +9,7 @@ body,
 }
 
 body {
-  @apply bg-army-50 dark:bg-army-950 transition-colors duration-500;
+  @apply bg-army-50 dark:bg-dark-900 transition-colors duration-300;
 }
 
 /* =========================
@@ -22,20 +22,13 @@ body {
   100% { transform: translateY(0px) rotate(0deg); }
 }
 
-.animate-float      { animation: float 6s ease-in-out infinite; }
-.animate-spin-slow  { animation: spin 18s linear infinite; }
+.animate-float     { animation: float 6s ease-in-out infinite; }
+.animate-spin-slow { animation: spin 18s linear infinite; }
 
 /* =========================
    SCROLLBAR
 ========================= */
 
-::-webkit-scrollbar        { width: 6px; }
-::-webkit-scrollbar-thumb  { background: rgba(74,114,35,0.45); border-radius: 9999px; }
-::-webkit-scrollbar-track  { background: transparent; }
-
-/* =========================
-   SIDEBAR ACTIVE GLOW
-========================= */
-.nav-active-glow {
-  box-shadow: inset 3px 0 0 0 #4a7223;
-}
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(74,114,35,0.4); border-radius: 9999px; }
+::-webkit-scrollbar-track { background: transparent; }

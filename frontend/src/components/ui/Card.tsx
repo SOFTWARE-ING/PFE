@@ -15,11 +15,11 @@ export const Card: React.FC<CardProps> = ({
 }) => (
   <div
     className={[
-      "bg-white dark:bg-[#1e2d0e]",
-      "border border-army-100 dark:border-army-800/60",
-      "shadow-sm dark:shadow-black/30",
+      "bg-white dark:bg-dark-700",
+      "border border-army-100 dark:border-dark-600",
+      "shadow-sm dark:shadow-black/20",
       "rounded-2xl",
-      "transition-all duration-200",
+      "transition-colors duration-200",
       paddings[padding],
       className,
     ].join(" ")}

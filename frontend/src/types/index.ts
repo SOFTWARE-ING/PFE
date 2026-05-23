@@ -1,4 +1,6 @@
-// ─── Auth ─────────────────────────────────────────────────────────────────────
+// types/index.ts — Types TypeScript SHIELD v3
+
+// ─── Auth ──────────────────────────────────────────────────────────────────
 
 export interface LoginFormData {
   email: string;
@@ -41,7 +43,7 @@ export interface UserInfo {
 
 export type OTPCode = string[];
 
-// ─── Register ─────────────────────────────────────────────────────────────────
+// ─── Register ──────────────────────────────────────────────────────────────
 
 export interface AgentOfficielCreate {
   email: string;
@@ -77,41 +79,29 @@ export interface APIResponse<T = unknown> {
   data?: T;
 }
 
-// ─── Keys ─────────────────────────────────────────────────────────────────────
+// ─── Keys ──────────────────────────────────────────────────────────────────
 
 export interface CryptographicKey {
   id_cle: string;
-  id_agent_officiel: string;
   cle_publique: string;
   date_creation: string;
   date_expiration: string;
-  est_expiree?: boolean;
+  success?: boolean;
+  message?: string;
 }
 
-// ─── Signatures ───────────────────────────────────────────────────────────────
-
-export interface SignatureListItem {
-  id_signature: string;
-  id_communique: string;
-  titre_communique: string;
-  date_signature: string;
-  est_valide: boolean;
-  algorithme: string;
-}
+// ─── Signatures ────────────────────────────────────────────────────────────
 
 export interface SignRequest {
   communique_id: string;
-  commentaire?: string;
 }
 
 export interface SignResponse {
   success: boolean;
+  signature_id: string;
+  communique_id: string;
+  qr_code?: string;
   message: string;
-  signature_id?: string;
-  signature_value?: string;
-  hash_document?: string;
-  timestamp?: string;
-  verified?: boolean;
 }
 
 export interface VerifyRequest {
@@ -120,67 +110,198 @@ export interface VerifyRequest {
 
 export interface VerifyResponse {
   success: boolean;
+  is_valid: boolean;
   message: string;
-  signature_id?: string;
-  verified?: boolean;
-  hash_document?: string;
-  details?: string;
+  details?: Record<string, unknown>;
 }
 
 export interface IntegrityResponse {
+  success: boolean;
+  communique_id: string;
+  is_valid: boolean;
+  signatures_count: number;
+  details: Record<string, unknown>;
+}
+
+export interface SignatureListItem {
+  id_signature: string;
+  id_communique: string;
+  titre_communique?: string;
+  date_signature: string;
+  est_valide: boolean;
+  algorithme_hachage: string;
+}
+
+// ─── Documents ─────────────────────────────────────────────────────────────
+
+export interface UploadResponse {
+  success: boolean;
   communique_id: string;
   titre: string;
-  statut: string;
-  total_signatures: number;
-  valid_signatures: number;
-  integrity_verified: boolean;
-  details: Record<string, unknown>[];
+  contenu_extrait?: string;
+  message: string;
 }
 
-// ─── Search ───────────────────────────────────────────────────────────────────
+export interface FinalizeResponse {
+  success: boolean;
+  communique_id: string;
+  file_path: string;
+  file_size: number;
+  message: string;
+}
 
-export interface Communique {
+export interface MyDocument {
   id_communique: string;
   titre: string;
-  contenu?: string;
   statut: string;
-  date_publication: string;
-  auteur?: string;
+  est_archive: boolean;
+  date_creation: string;
+  date_publication?: string;
+  fichier_signe?: string;
 }
 
+export interface MyDocumentsResponse {
+  success: boolean;
+  total: number;
+  documents: MyDocument[];
+}
+
+// ─── Search ────────────────────────────────────────────────────────────────
+
 export interface SearchResult {
-  communique: Communique;
-  score: number;
-  highlights?: Record<string, string[]>;
+  id_communique: string;
+  titre: string;
+  extrait?: string;
+  score?: number;
+  statut: string;
+  date_publication: string;
 }
 
 export interface SearchResponse {
   success: boolean;
-  query: string;
   total: number;
   page: number;
   limit: number;
   results: SearchResult[];
 }
 
-// ─── OCR ──────────────────────────────────────────────────────────────────────
-
-export interface OCRResponse {
-  filname: string;
-  extracted_text: string;
-  message: string;
+export interface SimpleListResponse {
+  success: boolean;
+  total: number;
+  results: {
+    id: string;
+    titre: string;
+    statut: string;
+    date_publication: string;
+    nb_consultations?: number;
+  }[];
 }
 
-// ─── 2FA management ───────────────────────────────────────────────────────────
+// ─── OCR ───────────────────────────────────────────────────────────────────
+
+export interface OCRResponse {
+  success: boolean;
+  filename: string;
+  text: string;
+  language?: string;
+  word_count?: number;
+}
+
+// ─── 2FA ───────────────────────────────────────────────────────────────────
 
 export interface Enable2FAResponse {
   success: boolean;
-  message: string;
   secret: string;
   qr_code: string;
+  message: string;
 }
 
 export interface Status2FAResponse {
   enabled: boolean;
   activated_at?: string;
+}
+
+// ─── Admin — Utilisateurs ──────────────────────────────────────────────────
+
+export interface AdminUser {
+  id_utilisateur: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  role: "agent_officiel" | "administrateur" | "citoyen" | "inconnu";
+  niveau_habilitation?: string;
+  token_autorise: boolean;
+  deux_fa_actif: boolean;
+  deux_fa_force: boolean;
+  session_active: boolean;
+  derniere_connexion: string | null;
+  date_creation: string;
+  is_protected: boolean; // SUPER_ADMIN — ne peut pas être modifié
+}
+
+export interface AdminUsersResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  users: AdminUser[];
+}
+
+// ─── Admin — Logs ──────────────────────────────────────────────────────────
+
+export interface LogEntry {
+  id_log: string;
+  id_utilisateur: string;
+  user_email: string;
+  user_nom: string;
+  type_action: string;
+  date_action: string;
+  succes: boolean;
+  details: string | null;
+  ip_adresse: string | null;
+}
+
+export interface AdminLogsResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  logs: LogEntry[];
+}
+
+// ─── Admin — Stats ─────────────────────────────────────────────────────────
+
+export interface AdminStats {
+  utilisateurs: {
+    total: number;
+    agents: number;
+    admins: number;
+    citoyens: number;
+    bloques: number;
+    avec_2fa: number;
+    sessions_actives: number;
+  };
+}
+
+// ─── Admin — Sessions ──────────────────────────────────────────────────────
+
+export interface ActiveSession {
+  id_utilisateur: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  role: string;
+  derniere_connexion: string | null;
+}
+
+// ─── Password Reset ────────────────────────────────────────────────────────
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+  confirm_password: string;
 }

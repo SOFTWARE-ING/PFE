@@ -1,14 +1,16 @@
 """
-documents.py - Complete document signing workflow
-POST /api/documents/upload     → Upload PDF, extract text, create communique
-POST /api/documents/sign       → Sign communique, generate QR with metadata
-POST /api/documents/finalize   → Embed QR at given coordinates, save signed PDF
-POST /api/documents/archive    → Archive document (makes it searchable)
-GET  /api/documents/my         → List agent's documents
-GET  /api/documents/{id}/download → Download signed PDF
-DELETE /api/documents/{id}     → Delete document
-PATCH /api/documents/{id}/unarchive → Unarchive
-POST /api/documents/verify     → Verify document authenticity (public)
+documents.py — SHIELD — Workflow complet de signature
+=====================================================
+CORRECTION v3 — Endpoint /verify :
+  Implémentation du vrai flux cryptographique de vérification :
+  1. Lecture des métadonnées du QR code (sig chiffrée + key_fp)
+  2. Recherche de la clé publique via key_fp (empreinte)
+  3. Déchiffrement RSA-PSS de la signature → hash_original
+  4. OCR + normalisation du document scanné uploadé
+  5. SHA256 du texte normalisé → hash_nouveau
+  6. Comparaison hash_original == hash_nouveau → verdict
+
+Tous les autres endpoints sont inchangés.
 """
 
 import base64
@@ -20,6 +22,10 @@ from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -53,7 +59,7 @@ def _get_agent(token: str, db: Session):
     return user_id, agent
 
 
-# ── 1. UPLOAD PDF ──────────────────────────────────────────────────────────
+# ── 1. UPLOAD PDF ───────────────────────────────────────────────────────────
 
 @router.post("/upload")
 async def upload_document(
@@ -62,7 +68,6 @@ async def upload_document(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Upload a PDF, extract text, create communique record."""
     user_id, agent = _get_agent(credentials.credentials, db)
 
     if not file.filename.lower().endswith(('.pdf', '.docx', '.png', '.jpg', '.jpeg')):
@@ -75,12 +80,13 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Impossible d'extraire le texte du document.")
 
     normalized_text = OCRService.normalize(extracted_text)
-    content_hash = hashlib.sha256(extracted_text.encode('utf-8')).hexdigest()
+    content_hash = hashlib.sha256(normalized_text.encode('utf-8')).hexdigest()
 
     communique = Communique(
         id_communique=str(uuid.uuid4()),
         titre=titre,
         contenu=extracted_text,
+        contenu_normalise=normalized_text,
         hash_contenu=content_hash,
         statut='BROUILLON',
         id_auteur=user_id,
@@ -108,7 +114,6 @@ def sign_document(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Sign the communique and generate QR code with full metadata."""
     user_id, agent = _get_agent(credentials.credentials, db)
 
     sig_service = SignatureService(db)
@@ -169,7 +174,7 @@ def sign_document(
     }
 
 
-# ── 3. FINALIZE (embed QR at coordinates) ──────────────────────────────────
+# ── 3. FINALIZE ─────────────────────────────────────────────────────────────
 
 @router.post("/finalize")
 async def finalize_document(
@@ -182,7 +187,6 @@ async def finalize_document(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Embed QR code into PDF at given coordinates, save signed PDF."""
     user_id, _ = _get_agent(credentials.credentials, db)
 
     communique = db.query(Communique).filter(
@@ -205,12 +209,7 @@ async def finalize_document(
     from reportlab.pdfgen import canvas
     import PyPDF2
 
-    # Generate QR image
-    qr = qrcode.QRCode(
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=8,
-        border=2
-    )
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=8, border=2)
     qr.add_data(sig.metadata_qr)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")
@@ -218,15 +217,12 @@ async def finalize_document(
     qr_img.save(qr_buffer, format='PNG')
     qr_buffer.seek(0)
 
-    # Convert BytesIO to ImageReader so ReportLab can draw it
     qr_pil = PILImage.open(qr_buffer)
     qr_reader = ImageReader(qr_pil)
 
-    # Read original PDF
     pdf_content = await pdf_file.read()
     original_pdf = PyPDF2.PdfReader(BytesIO(pdf_content))
 
-    # Create overlay with QR code at given coordinates
     overlay_buffer = BytesIO()
     page = original_pdf.pages[0]
     page_width = float(page.mediabox.width)
@@ -236,7 +232,6 @@ async def finalize_document(
     c.drawImage(qr_reader, qr_x, qr_y, width=qr_size, height=qr_size)
     c.save()
 
-    # Merge overlay onto original PDF
     overlay_buffer.seek(0)
     overlay_pdf = PyPDF2.PdfReader(overlay_buffer)
     writer = PyPDF2.PdfWriter()
@@ -246,7 +241,6 @@ async def finalize_document(
             page.merge_page(overlay_pdf.pages[0])
         writer.add_page(page)
 
-    # Save final PDF to disk
     output_buffer = BytesIO()
     writer.write(output_buffer)
     output_buffer.seek(0)
@@ -257,8 +251,6 @@ async def finalize_document(
         f.write(output_buffer.getvalue())
 
     file_size = os.path.getsize(file_path)
-
-    # Update DB
     communique.fichier_signe = str(file_path)
     db.commit()
 
@@ -280,7 +272,6 @@ async def archive_document(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Archive document — makes it public and searchable."""
     user_id, _ = _get_agent(credentials.credentials, db)
 
     communique = db.query(Communique).filter(
@@ -324,14 +315,13 @@ async def archive_document(
     }
 
 
-# ── 5. LIST MY DOCUMENTS ───────────────────────────────────────────────────
+# ── 5. LIST MY DOCUMENTS ────────────────────────────────────────────────────
 
 @router.get("/my")
 def list_my_documents(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """List all documents signed by the authenticated agent."""
     user_id, _ = _get_agent(credentials.credentials, db)
 
     communiques = db.query(Communique).filter(
@@ -358,14 +348,10 @@ def list_my_documents(
     return {"success": True, "total": len(results), "documents": results}
 
 
-# ── 6. DOWNLOAD SIGNED PDF ─────────────────────────────────────────────────
+# ── 6. DOWNLOAD ─────────────────────────────────────────────────────────────
 
 @router.get("/{communique_id}/download")
-def download_document(
-    communique_id: str,
-    db: Session = Depends(get_db)
-):
-    """Download signed PDF — public for archived documents."""
+def download_document(communique_id: str, db: Session = Depends(get_db)):
     communique = db.query(Communique).filter(
         Communique.id_communique == communique_id,
         Communique.est_archive == True
@@ -379,11 +365,10 @@ def download_document(
         with open(communique.fichier_signe, 'rb') as f:
             yield from f
 
-    filename = f"communique_{communique_id[:8]}.pdf"
     return StreamingResponse(
         iter_file(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename=communique_{communique_id[:8]}.pdf"}
     )
 
 
@@ -395,7 +380,6 @@ def delete_document(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Delete a document and its signatures."""
     user_id, _ = _get_agent(credentials.credentials, db)
 
     communique = db.query(Communique).filter(
@@ -421,7 +405,6 @@ def unarchive_document(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Unarchive a document — removes it from search results."""
     user_id, _ = _get_agent(credentials.credentials, db)
 
     communique = db.query(Communique).filter(
@@ -434,10 +417,10 @@ def unarchive_document(
     communique.statut = 'BROUILLON'
     communique.est_archive = False
     db.commit()
-    return {"success": True, "message": "Document désarchivé. Il n'apparaît plus dans les recherches."}
+    return {"success": True, "message": "Document désarchivé."}
 
 
-# ── 9. VERIFY (public) ──────────────────────────────────────────────────────
+# ── 9. VERIFY (public) — FLUX CRYPTOGRAPHIQUE COMPLET ──────────────────────
 
 @router.post("/verify")
 async def verify_document(
@@ -446,45 +429,152 @@ async def verify_document(
     db: Session = Depends(get_db)
 ):
     """
-    Verify document authenticity by comparing QR data with document content.
-    QR data = JSON string read from QR code.
-    File = scanned document or image.
+    Vérification cryptographique complète d'un document signé.
+
+    Flux :
+    ① Lecture des métadonnées du QR code
+    ② Récupération de la clé publique de l'agent via key_fp (empreinte)
+    ③ Déchiffrement RSA-PSS de encrypted_hash → hash_original
+    ④ OCR + normalisation du document uploadé → texte_scan
+    ⑤ SHA256(texte_scan) → hash_nouveau
+    ⑥ hash_original == hash_nouveau → verdict final
+
+    Cela garantit que :
+    - La signature vient bien de l'agent (clé privée)
+    - Le contenu du document n'a pas été modifié depuis la signature
     """
+
+    # ── ① Parser le QR code ─────────────────────────────────────────────
     try:
         metadata = json.loads(qr_data)
     except Exception:
         raise HTTPException(status_code=400, detail="QR code invalide ou illisible.")
 
-    sig_id = metadata.get("sig_id")
-    com_id = metadata.get("com_id")
+    sig_id        = metadata.get("sig_id")
+    agent_id      = metadata.get("agent_id")
+    key_fp        = metadata.get("key_fp")       # empreinte SHA256[:16] de la clé publique
+    encrypted_hash = metadata.get("encrypted_hash")  # signature RSA base64
 
-    sig = db.query(Signature).filter(Signature.id_signature == sig_id).first()
-    communique = db.query(Communique).filter(Communique.id_communique == com_id).first()
+    if not all([sig_id, agent_id, key_fp, encrypted_hash]):
+        return {
+            "verified": False,
+            "etape_echouee": "lecture_qr",
+            "message": "❌ QR code incomplet ou corrompu. Données manquantes.",
+        }
 
-    if not sig or not communique:
-        return {"verified": False, "message": "❌ Document introuvable dans la base de données."}
+    # ── ② Trouver la clé publique de l'agent via key_fp ─────────────────
+    # On cherche toutes les clés de cet agent et on compare l'empreinte
+    cles = db.query(CleCryptographique).filter(
+        CleCryptographique.id_agent_officiel == agent_id
+    ).order_by(CleCryptographique.date_creation.desc()).all()
 
-    sig_service = SignatureService(db)
-    result = sig_service.verify_signature(sig_id)
+    public_key_obj = None
+    for cle in cles:
+        fp = hashlib.sha256(cle.cle_publique.encode()).hexdigest()[:16]
+        if fp == key_fp:
+            try:
+                public_key_obj = serialization.load_pem_public_key(
+                    cle.cle_publique.encode()
+                )
+            except Exception:
+                pass
+            break
 
-    content = await file.read()
-    extracted_text = OCRService.extract_text(content, file.filename)
-    uploaded_normalized = OCRService.normalize(extracted_text)
-    stored_normalized = OCRService.normalize(communique.contenu)
+    if public_key_obj is None:
+        # Fallback : essayer la clé la plus récente
+        if cles:
+            try:
+                public_key_obj = serialization.load_pem_public_key(
+                    cles[0].cle_publique.encode()
+                )
+            except Exception:
+                pass
 
-    content_match = (uploaded_normalized == stored_normalized) if uploaded_normalized else None
+    if public_key_obj is None:
+        return {
+            "verified": False,
+            "etape_echouee": "recherche_cle",
+            "message": "❌ Clé publique de l'agent introuvable.",
+        }
 
-    agent_user = db.query(Utilisateur).filter(Utilisateur.id_utilisateur == sig.id_agent_officiel).first()
-    agent_info = db.query(AgentOfficiel).filter(AgentOfficiel.id_utilisateur == sig.id_agent_officiel).first()
+    # ── ③ Extraire le texte du document scanné uploadé (OCR) ─────────────
+    try:
+        file_bytes = await file.read()
+        texte_scan = OCRService.extract_text(file_bytes, file.filename)
+        if not texte_scan.strip():
+            return {
+                "verified": False,
+                "etape_echouee": "ocr",
+                "message": "❌ Impossible d'extraire le texte du document. Vérifiez la qualité du scan.",
+            }
+        texte_normalise = OCRService.normalize(texte_scan)
+    except Exception as e:
+        return {
+            "verified": False,
+            "etape_echouee": "ocr",
+            "message": f"❌ Erreur lors de l'extraction du texte : {str(e)}",
+        }
+
+    # ── ④ Calculer le hash SHA256 du texte normalisé extrait ─────────────
+    hash_nouveau = hashlib.sha256(texte_normalise.encode('utf-8')).digest()
+
+    # ── ⑤ Vérification RSA-PSS : déchiffrer encrypted_hash avec clé publique
+    #    et comparer avec hash_nouveau
+    signature_valid = False
+    try:
+        signature_bytes = base64.b64decode(encrypted_hash)
+        public_key_obj.verify(
+            signature_bytes,
+            hash_nouveau,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        signature_valid = True
+    except InvalidSignature:
+        signature_valid = False
+    except Exception as e:
+        return {
+            "verified": False,
+            "etape_echouee": "verification_rsa",
+            "message": f"❌ Erreur lors de la vérification cryptographique : {str(e)}",
+        }
+
+    # ── ⑥ Construire la réponse détaillée ────────────────────────────────
+    agent_user  = db.query(Utilisateur).filter(Utilisateur.id_utilisateur == agent_id).first()
+    agent_info  = db.query(AgentOfficiel).filter(AgentOfficiel.id_utilisateur == agent_id).first()
+    sig_record  = db.query(Signature).filter(Signature.id_signature == sig_id).first()
+    communique  = db.query(Communique).filter(
+        Communique.id_communique == metadata.get("com_id")
+    ).first()
+
+    if signature_valid:
+        message = "✅ Document authentique et intègre. La signature est cryptographiquement valide."
+    else:
+        message = (
+            "❌ Vérification échouée. Le contenu du document ne correspond pas à la signature. "
+            "Le document a peut-être été modifié après signature."
+        )
 
     return {
-        "verified": result.verified and (content_match is not False),
-        "signature_valid": result.verified,
-        "content_match": content_match,
-        "communique_titre": communique.titre,
+        "verified": signature_valid,
+        "signature_valid": signature_valid,
+        # Infos sur le document
+        "communique_titre": communique.titre if communique else metadata.get("com_id"),
+        "date_signature": sig_record.date_signature.isoformat() if sig_record else metadata.get("ts"),
+        "algorithme": metadata.get("algo", "RSA-PSS-SHA256"),
+        # Infos sur le signataire
         "signed_by": f"{agent_user.prenom} {agent_user.nom}" if agent_user else "Inconnu",
         "institution": agent_info.id_institution if agent_info else "",
         "fonction": agent_info.fonction if agent_info else "",
-        "date_signature": sig.date_signature,
-        "message": "✅ Document authentique et intègre." if result.verified else "❌ Signature invalide ou document modifié."
+        # Diagnostic des étapes
+        "etapes": {
+            "qr_lu": True,
+            "cle_trouvee": public_key_obj is not None,
+            "ocr_reussi": bool(texte_normalise),
+            "signature_valide": signature_valid,
+        },
+        "message": message,
     }

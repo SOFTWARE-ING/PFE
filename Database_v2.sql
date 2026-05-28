@@ -166,3 +166,4 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA signature_communiques_officiels TO 
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA signature_communiques_officiels TO shield;
 ALTER ROLE shield SET search_path TO signature_communiques_officiels, public;
 
+-- Outdated

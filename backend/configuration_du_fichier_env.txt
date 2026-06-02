@@ -25,7 +25,7 @@ OTP_LENGTH=6
 
 # Clé Fernet pour chiffrer les clés privées RSA
 # Générez avec : python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-ENCRYPTION_KEY=eRecPLsGKUUj6PllLr7vBAwtLWBRr_-dsiOWEr1xEgI=
+ENCRYPTION_KEY=votre_cle_fernet_generee
 
 # Connexion a sont compte gmail de lapplication
 MAIL_USERNAME=signaturenumerique.shield@gmail.com
@@ -35,3 +35,7 @@ MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
 MAIL_TLS=True
 MAIL_SSL=False
+
+# Réinitialisation du mot de passe
+FRONTEND_URL=http://localhost:5173
+PASSWORD_RESET_EXPIRE_MINUTES=30

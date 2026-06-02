@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   ShieldCheck, Search, Key, FileSignature, ScanText,
   User, LogOut, Menu, X, Settings, FolderOpen, Bell,
-  ChevronDown, LayoutDashboard, Users, ScrollText, Radio,
+  ChevronDown, LayoutDashboard, Users, ScrollText, ScanSearch, Radio,
 } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { useAuth } from "../../context/AuthContext";
@@ -13,6 +13,7 @@ interface NavItem { to: string; label: string; icon: React.ReactNode; roles?: st
 
 const navItems: NavItem[] = [
   { to: "/dashboard",              label: "Recherche",             icon: <Search size={16} /> },
+  { to: "/dashboard/verify",       label: "Vérifier un document",  icon: <ScanSearch size={16} /> },
   { to: "/dashboard/sign",         label: "Signer un document",    icon: <FileSignature size={16} />, roles: ["agent_officiel"] },
   { to: "/dashboard/my-documents", label: "Mes documents",         icon: <FolderOpen size={16} />,   roles: ["agent_officiel"] },
   { to: "/dashboard/signatures",   label: "Signatures",            icon: <ShieldCheck size={16} />,  roles: ["agent_officiel"] },

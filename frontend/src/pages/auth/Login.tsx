@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Mail, Lock, LogIn } from "lucide-react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Mail, Lock, LogIn, Search } from "lucide-react";
 import { AuthLayout } from "../../components/layout/AuthLayout";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
@@ -121,6 +121,23 @@ export default function Login() {
             {loading ? "Connexion…" : "Login"}
           </Button>
         </form>
+
+        <div className="flex flex-col items-center gap-2 mt-4">
+          <Link
+            to="/forgot-password"
+            className="text-sm text-gray-500 dark:text-green-400/70 hover:text-army-600 dark:hover:text-army-400 transition-colors"
+          >
+            Mot de passe oublié ?
+          </Link>
+          <Link
+            to="/verify"
+            className="flex items-center gap-1.5 text-sm text-army-600 dark:text-army-400 hover:underline font-medium"
+          >
+            <Search size={14} />
+            Vérifier un document signé
+          </Link>
+
+        </div>
       </Card>
     </AuthLayout>
   );

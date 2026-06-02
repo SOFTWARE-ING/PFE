@@ -12,6 +12,7 @@ from app.routes.search         import router as search_router
 from app.routes.ocr            import router as ocr_router
 from app.routes.admin          import router as admin_router          # NOUVEAU v3
 from app.routes.password_reset import router as password_reset_router # NOUVEAU v3
+from app.routes.verify import router as verify_router
 
 router = APIRouter()
 
@@ -24,3 +25,4 @@ router.include_router(search_router)
 router.include_router(ocr_router)
 router.include_router(admin_router)
 router.include_router(password_reset_router)
+router.include_router(verify_router)

@@ -1,7 +1,10 @@
 """
 email_service.py — Service d'envoi d'emails SHIELD v3
 ======================================================
-CORRECTIONS v3.1 :
+CORRECTIONS v3.2 :
+  - Nom d'expéditeur explicite (anti-spam)
+  - En-têtes Reply-To, Date, Message-ID, X-Mailer, X-Priority, List-Unsubscribe
+  - Version texte brut automatique attachée avant le HTML
   - Double ehlo() après starttls() (requis par Gmail)
   - Retry automatique x3 avec délai de 2 secondes
   - Nettoyage automatique des espaces dans MAIL_PASSWORD
@@ -12,17 +15,18 @@ CORRECTIONS v3.1 :
 import os
 import re
 import time
+import uuid
 import smtplib
 import secrets
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate
 from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
 # ── Configuration avec double fallback ───────────────────────────────────────
-# Cherche d'abord SMTP_*, puis MAIL_* (convention actuelle du .env)
 SMTP_HOST     = os.getenv("SMTP_HOST")     or os.getenv("MAIL_SERVER",   "smtp.gmail.com")
 SMTP_PORT     = int(os.getenv("SMTP_PORT") or os.getenv("MAIL_PORT",     "587"))
 SMTP_USER     = os.getenv("SMTP_USER")     or os.getenv("MAIL_USERNAME", "")
@@ -72,15 +76,31 @@ def _send(to: str, subject: str, html_body: str) -> Tuple[bool, str]:
         return True, "Email simulé (mode développement)"
 
     # ── Mode production : envoi SMTP réel avec retry ─────────────────────
+    # Générer automatiquement la version texte brut depuis le HTML
+    plain_text = re.sub(r'<[^>]+>', ' ', html_body)
+    plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+
     last_error = ""
 
     for attempt in range(MAX_RETRIES):
         try:
             msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"]    = FROM_EMAIL
-            msg["To"]      = to
-            msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+            # ── En-têtes anti-spam ────────────────────────────────────────
+            msg["Subject"]          = subject
+            msg["From"]             = f"SHIELD — Signatures Officielles <{FROM_EMAIL}>"
+            msg["To"]               = to
+            msg["Reply-To"]         = FROM_EMAIL
+            msg["Date"]             = formatdate(localtime=True)
+            msg["Message-ID"]       = f"<{uuid.uuid4()}@shield-gouv>"
+            msg["X-Mailer"]         = "SHIELD Mailer v3"
+            msg["X-Priority"]       = "3"
+            msg["List-Unsubscribe"] = f"<mailto:{FROM_EMAIL}?subject=unsubscribe>"
+
+            # ── Corps : texte brut d'abord, HTML ensuite ──────────────────
+            # (les filtres antispam font plus confiance aux emails multipart complets)
+            msg.attach(MIMEText(plain_text, "plain", "utf-8"))
+            msg.attach(MIMEText(html_body,  "html",  "utf-8"))
 
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
                 server.ehlo()
@@ -100,7 +120,6 @@ def _send(to: str, subject: str, html_body: str) -> Tuple[bool, str]:
                 f"   de 16 caractères SANS espaces.\n"
                 f"   Détail : {e}"
             )
-            # Inutile de réessayer si c'est une erreur d'auth
             return False, "Erreur d'authentification Gmail. Vérifiez MAIL_PASSWORD dans .env."
 
         except smtplib.SMTPRecipientsRefused as e:
@@ -132,7 +151,7 @@ def _send(to: str, subject: str, html_body: str) -> Tuple[bool, str]:
 
 class EmailService:
 
-    # ── Code OTP 2FA ────────────────────────────────────────────────────────
+    # ── Code OTP 2FA ─────────────────────────────────────────────────────────
 
     @staticmethod
     def generate_code(length: int = 6) -> str:
@@ -159,6 +178,10 @@ class EmailService:
                              border-bottom:1px solid #e8eedc;">
                     <h1 style="margin:0;color:#2e3e14;font-size:24px;
                                font-weight:700;letter-spacing:1px;">🛡️ SHIELD</h1>
+                    <p style="margin:6px 0 0 0;color:#6b7c3a;font-size:12px;
+                              letter-spacing:2px;text-transform:uppercase;">
+                      Signatures Officielles
+                    </p>
                   </td>
                 </tr>
                 <tr>
@@ -182,11 +205,14 @@ class EmailService:
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:20px;text-align:center;
+                  <td style="padding:20px 30px;text-align:center;
                              border-top:1px solid #eef2e6;background:#fcfcfa;">
-                    <p style="margin:0;color:#7a8862;font-size:12px;line-height:20px;">
+                    <p style="margin:0 0 6px 0;color:#7a8862;font-size:12px;line-height:20px;">
                       Si vous n'êtes pas à l'origine de cette demande,
                       vous pouvez ignorer cet email.
+                    </p>
+                    <p style="margin:0;color:#aab89a;font-size:11px;">
+                      © SHIELD — Système de Signature Numérique des Communiqués Officiels
                     </p>
                   </td>
                 </tr>
@@ -202,11 +228,12 @@ class EmailService:
     def _send_email(cls, to_email: str, subject: str, html_body: str) -> Tuple[bool, str]:
         return _send(to_email, subject, html_body)
 
-    # ── Réinitialisation MDP ─────────────────────────────────────────────────
+    # ── Réinitialisation MDP ──────────────────────────────────────────────────
 
     @staticmethod
     def send_password_reset(email: str, nom: str, reset_link: str) -> Tuple[bool, str]:
         """Envoie un lien de réinitialisation de mot de passe."""
+        subject = "SHIELD — Réinitialisation de votre mot de passe"
         html = f"""
         <!DOCTYPE html>
         <html lang="fr">
@@ -216,39 +243,53 @@ class EmailService:
             <tr><td align="center">
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="max-width:520px;background:#ffffff;border-radius:14px;
-                       border:1px solid #d9e2c8;overflow:hidden;">
+                       border:1px solid #d9e2c8;overflow:hidden;
+                       box-shadow:0 2px 10px rgba(0,0,0,0.04);">
                 <tr>
                   <td style="padding:28px 30px;text-align:center;
                              border-bottom:1px solid #e8eedc;">
                     <h1 style="margin:0;color:#2e3e14;font-size:24px;font-weight:700;">
                       🛡️ SHIELD
                     </h1>
+                    <p style="margin:6px 0 0 0;color:#6b7c3a;font-size:12px;
+                              letter-spacing:2px;text-transform:uppercase;">
+                      Signatures Officielles
+                    </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:32px 30px;">
-                    <p style="color:#374151;font-size:15px;">
+                    <p style="color:#374151;font-size:15px;margin:0 0 12px 0;">
                       Bonjour <strong>{nom}</strong>,
                     </p>
-                    <p style="color:#5f6f42;font-size:14px;line-height:22px;">
+                    <p style="color:#5f6f42;font-size:14px;line-height:22px;margin:0 0 24px 0;">
                       Vous avez demandé la réinitialisation de votre mot de passe.
-                      Cliquez sur le bouton ci-dessous.
+                      Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.
                       Ce lien est valable <strong>30 minutes</strong>.
                     </p>
                     <div style="text-align:center;margin:32px 0;">
                       <a href="{reset_link}"
-                        style="background:#2d5a27;color:white;text-decoration:none;
+                        style="background:#2d5a27;color:#ffffff;text-decoration:none;
                                padding:14px 32px;border-radius:8px;font-weight:bold;
                                font-size:15px;display:inline-block;">
                         Réinitialiser mon mot de passe
                       </a>
                     </div>
-                    <p style="color:#6b7280;font-size:12px;">
+                    <p style="color:#6b7280;font-size:12px;line-height:20px;">
                       Si vous n'avez pas fait cette demande, ignorez cet email.
                       Votre mot de passe ne sera pas modifié.
                     </p>
-                    <p style="color:#9ca3af;font-size:11px;word-break:break-all;">
+                    <p style="color:#9ca3af;font-size:11px;word-break:break-all;
+                              margin-top:12px;">
                       Lien alternatif : {reset_link}
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 30px;text-align:center;
+                             border-top:1px solid #eef2e6;background:#fcfcfa;">
+                    <p style="margin:0;color:#aab89a;font-size:11px;">
+                      © SHIELD — Système de Signature Numérique des Communiqués Officiels
                     </p>
                   </td>
                 </tr>
@@ -257,13 +298,14 @@ class EmailService:
           </table>
         </body>
         </html>"""
-        return _send(email, "SHIELD — Réinitialisation de votre mot de passe", html)
+        return _send(email, subject, html)
 
-    # ── Mot de passe temporaire (reset par admin) ────────────────────────────
+    # ── Mot de passe temporaire (reset par admin) ─────────────────────────────
 
     @staticmethod
     def send_temp_password(email: str, nom: str, temp_password: str) -> Tuple[bool, str]:
         """Envoie un mot de passe temporaire généré par un admin."""
+        subject = "SHIELD — Votre nouveau mot de passe temporaire"
         html = f"""
         <!DOCTYPE html>
         <html lang="fr">
@@ -273,21 +315,26 @@ class EmailService:
             <tr><td align="center">
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="max-width:520px;background:#ffffff;border-radius:14px;
-                       border:1px solid #d9e2c8;overflow:hidden;">
+                       border:1px solid #d9e2c8;overflow:hidden;
+                       box-shadow:0 2px 10px rgba(0,0,0,0.04);">
                 <tr>
                   <td style="padding:28px 30px;text-align:center;
                              border-bottom:1px solid #e8eedc;">
                     <h1 style="margin:0;color:#2e3e14;font-size:24px;font-weight:700;">
                       🛡️ SHIELD
                     </h1>
+                    <p style="margin:6px 0 0 0;color:#6b7c3a;font-size:12px;
+                              letter-spacing:2px;text-transform:uppercase;">
+                      Signatures Officielles
+                    </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:32px 30px;">
-                    <p style="color:#374151;font-size:15px;">
+                    <p style="color:#374151;font-size:15px;margin:0 0 12px 0;">
                       Bonjour <strong>{nom}</strong>,
                     </p>
-                    <p style="color:#5f6f42;font-size:14px;line-height:22px;">
+                    <p style="color:#5f6f42;font-size:14px;line-height:22px;margin:0 0 20px 0;">
                       Un administrateur a réinitialisé votre mot de passe.
                       Voici votre mot de passe temporaire :
                     </p>
@@ -299,17 +346,26 @@ class EmailService:
                         {temp_password}
                       </code>
                     </div>
-                    <p style="color:#b45309;font-size:13px;font-weight:600;">
+                    <p style="color:#b45309;font-size:13px;font-weight:600;
+                              margin:0 0 24px 0;">
                       ⚠️ Changez ce mot de passe dès votre prochaine connexion.
                     </p>
-                    <div style="text-align:center;margin-top:24px;">
+                    <div style="text-align:center;">
                       <a href="{FRONTEND_URL}/login"
-                        style="background:#2d5a27;color:white;text-decoration:none;
-                               padding:12px 28px;border-radius:8px;
-                               font-weight:bold;display:inline-block;">
-                        Se connecter
+                        style="background:#2d5a27;color:#ffffff;text-decoration:none;
+                               padding:12px 28px;border-radius:8px;font-weight:bold;
+                               font-size:14px;display:inline-block;">
+                        Se connecter à SHIELD
                       </a>
                     </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 30px;text-align:center;
+                             border-top:1px solid #eef2e6;background:#fcfcfa;">
+                    <p style="margin:0;color:#aab89a;font-size:11px;">
+                      © SHIELD — Système de Signature Numérique des Communiqués Officiels
+                    </p>
                   </td>
                 </tr>
               </table>
@@ -317,9 +373,9 @@ class EmailService:
           </table>
         </body>
         </html>"""
-        return _send(email, "SHIELD — Votre nouveau mot de passe temporaire", html)
+        return _send(email, subject, html)
 
-    # ── Création de compte par admin ─────────────────────────────────────────
+    # ── Création de compte par admin ──────────────────────────────────────────
 
     @staticmethod
     def send_account_created(
@@ -327,6 +383,7 @@ class EmailService:
         totp_secret: str, role: str = "Agent Officiel"
     ) -> Tuple[bool, str]:
         """Envoie les identifiants d'un nouveau compte créé par un admin."""
+        subject = "SHIELD — Votre compte a été créé"
         html = f"""
         <!DOCTYPE html>
         <html lang="fr">
@@ -336,33 +393,46 @@ class EmailService:
             <tr><td align="center">
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="max-width:560px;background:#ffffff;border-radius:14px;
-                       border:1px solid #d9e2c8;overflow:hidden;">
+                       border:1px solid #d9e2c8;overflow:hidden;
+                       box-shadow:0 2px 10px rgba(0,0,0,0.04);">
                 <tr>
                   <td style="padding:28px 30px;text-align:center;
                              border-bottom:1px solid #e8eedc;">
                     <h1 style="margin:0;color:#2e3e14;font-size:24px;font-weight:700;">
                       🛡️ SHIELD — Bienvenue !
                     </h1>
+                    <p style="margin:6px 0 0 0;color:#6b7c3a;font-size:12px;
+                              letter-spacing:2px;text-transform:uppercase;">
+                      Signatures Officielles
+                    </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:32px 30px;">
-                    <p style="color:#374151;font-size:15px;">
+                    <p style="color:#374151;font-size:15px;margin:0 0 8px 0;">
                       Bonjour <strong>{nom}</strong>,
                     </p>
-                    <p style="color:#5f6f42;font-size:14px;">
+                    <p style="color:#5f6f42;font-size:14px;margin:0 0 24px 0;">
                       Votre compte SHIELD a été créé en tant que
                       <strong>{role}</strong>.
                     </p>
 
-                    <h3 style="color:#374151;margin-top:24px;">Vos identifiants</h3>
+                    <h3 style="color:#374151;font-size:14px;margin:0 0 10px 0;">
+                      Vos identifiants de connexion
+                    </h3>
                     <table style="width:100%;border-collapse:collapse;
-                                  border:1px solid #e5e7eb;border-radius:8px;">
+                                  border:1px solid #e5e7eb;border-radius:8px;
+                                  overflow:hidden;margin-bottom:24px;">
                       <tr style="background:#f9fafb;">
                         <td style="padding:10px 14px;color:#6b7280;
-                                   font-size:13px;width:130px;">Email :</td>
+                                   font-size:13px;width:130px;
+                                   border-bottom:1px solid #e5e7eb;">
+                          Email :
+                        </td>
                         <td style="padding:10px 14px;font-weight:bold;
-                                   font-size:13px;">{email}</td>
+                                   font-size:13px;border-bottom:1px solid #e5e7eb;">
+                          {email}
+                        </td>
                       </tr>
                       <tr>
                         <td style="padding:10px 14px;color:#6b7280;font-size:13px;">
@@ -370,39 +440,50 @@ class EmailService:
                         </td>
                         <td style="padding:10px 14px;font-size:13px;">
                           <code style="background:#f0fdf4;padding:3px 8px;
-                                       border-radius:4px;border:1px solid #bbf7d0;">
+                                       border-radius:4px;border:1px solid #bbf7d0;
+                                       letter-spacing:1px;">
                             {temp_password}
                           </code>
                         </td>
                       </tr>
                     </table>
 
-                    <h3 style="color:#374151;margin-top:24px;">
-                      Secret Google Authenticator (2FA)
+                    <h3 style="color:#374151;font-size:14px;margin:0 0 10px 0;">
+                      Secret Google Authenticator (2FA obligatoire)
                     </h3>
                     <div style="background:#f0fdf4;border:1px solid #bbf7d0;
-                                padding:16px;border-radius:8px;text-align:center;">
+                                padding:16px;border-radius:8px;
+                                text-align:center;margin-bottom:20px;">
                       <code style="font-size:16px;letter-spacing:3px;color:#15803d;">
                         {totp_secret}
                       </code>
                     </div>
 
                     <div style="background:#fef3c7;border:1px solid #fcd34d;
-                                padding:12px;border-radius:8px;margin-top:20px;
-                                font-size:13px;color:#92400e;">
+                                padding:12px 16px;border-radius:8px;
+                                font-size:13px;color:#92400e;margin-bottom:28px;
+                                line-height:20px;">
                       ⚠️ Changez votre mot de passe dès la première connexion.
-                      Votre accès doit être autorisé par un administrateur avant de pouvoir
-                      vous connecter.
+                      Votre accès doit être autorisé par un administrateur
+                      avant de pouvoir vous connecter.
                     </div>
 
-                    <div style="text-align:center;margin-top:28px;">
+                    <div style="text-align:center;">
                       <a href="{FRONTEND_URL}/login"
-                        style="background:#2d5a27;color:white;text-decoration:none;
-                               padding:14px 32px;border-radius:8px;
-                               font-weight:bold;font-size:15px;display:inline-block;">
+                        style="background:#2d5a27;color:#ffffff;text-decoration:none;
+                               padding:14px 32px;border-radius:8px;font-weight:bold;
+                               font-size:15px;display:inline-block;">
                         Accéder à SHIELD
                       </a>
                     </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 30px;text-align:center;
+                             border-top:1px solid #eef2e6;background:#fcfcfa;">
+                    <p style="margin:0;color:#aab89a;font-size:11px;">
+                      © SHIELD — Système de Signature Numérique des Communiqués Officiels
+                    </p>
                   </td>
                 </tr>
               </table>
@@ -410,7 +491,7 @@ class EmailService:
           </table>
         </body>
         </html>"""
-        return _send(email, "SHIELD — Votre compte a été créé", html)
+        return _send(email, subject, html)
 
     # ── Reset 2FA par admin ───────────────────────────────────────────────────
 
@@ -419,6 +500,7 @@ class EmailService:
         email: str, nom: str, totp_secret: str, qr_code_b64: str = ""
     ) -> Tuple[bool, str]:
         """Envoie le nouveau secret TOTP après reset du 2FA par un admin."""
+        subject = "SHIELD — Reconfiguration de votre 2FA"
         html = f"""
         <!DOCTYPE html>
         <html lang="fr">
@@ -428,34 +510,48 @@ class EmailService:
             <tr><td align="center">
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="max-width:520px;background:#ffffff;border-radius:14px;
-                       border:1px solid #d9e2c8;overflow:hidden;">
+                       border:1px solid #d9e2c8;overflow:hidden;
+                       box-shadow:0 2px 10px rgba(0,0,0,0.04);">
                 <tr>
                   <td style="padding:28px 30px;text-align:center;
                              border-bottom:1px solid #e8eedc;">
                     <h1 style="margin:0;color:#2e3e14;font-size:24px;font-weight:700;">
                       🛡️ SHIELD
                     </h1>
+                    <p style="margin:6px 0 0 0;color:#6b7c3a;font-size:12px;
+                              letter-spacing:2px;text-transform:uppercase;">
+                      Signatures Officielles
+                    </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:32px 30px;">
-                    <p style="color:#374151;font-size:15px;">
+                    <p style="color:#374151;font-size:15px;margin:0 0 12px 0;">
                       Bonjour <strong>{nom}</strong>,
                     </p>
-                    <p style="color:#5f6f42;font-size:14px;line-height:22px;">
+                    <p style="color:#5f6f42;font-size:14px;line-height:22px;
+                              margin:0 0 20px 0;">
                       Un administrateur a reconfiguré votre authentification
                       à deux facteurs. Voici votre nouveau secret Google Authenticator :
                     </p>
                     <div style="background:#f0fdf4;border:1px solid #bbf7d0;
                                 padding:16px;border-radius:8px;
-                                text-align:center;margin:20px 0;">
+                                text-align:center;margin:0 0 20px 0;">
                       <code style="font-size:16px;letter-spacing:3px;color:#15803d;">
                         {totp_secret}
                       </code>
                     </div>
-                    <p style="color:#6b7280;font-size:12px;line-height:20px;">
+                    <p style="color:#6b7280;font-size:12px;line-height:20px;margin:0;">
                       Supprimez l'ancien compte de votre application Google Authenticator
                       et ajoutez-en un nouveau avec ce secret.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 30px;text-align:center;
+                             border-top:1px solid #eef2e6;background:#fcfcfa;">
+                    <p style="margin:0;color:#aab89a;font-size:11px;">
+                      © SHIELD — Système de Signature Numérique des Communiqués Officiels
                     </p>
                   </td>
                 </tr>
@@ -464,4 +560,4 @@ class EmailService:
           </table>
         </body>
         </html>"""
-        return _send(email, "SHIELD — Reconfiguration de votre 2FA", html)
+        return _send(email, subject, html)

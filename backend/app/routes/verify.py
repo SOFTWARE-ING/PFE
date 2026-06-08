@@ -247,7 +247,9 @@ async def verify_document(
     else:
         try:
             sig_bytes   = base64.b64decode(encrypted_hash)
-            hash_orig   = hashlib.sha256(OCRService.normalize(communique.contenu).encode("utf-8")).digest()
+            # hash_orig   = hashlib.sha256(OCRService.normalize(communique.contenu).encode("utf-8")).digest()
+            contenu_ref = communique.contenu_normalise or OCRService.normalize(communique.contenu)
+            hash_orig = hashlib.sha256(contenu_ref.encode("utf-8")).digest()
             hash_orig_b64 = base64.b64encode(hash_orig).decode()
             niveau1["hash_reference"] = hash_orig_b64
 
@@ -276,7 +278,7 @@ async def verify_document(
     ocr_info   = {"zone_qr_masquee": False, "chars_extraits": 0}
 
     if niveau1["valide"]:
-        texte_scan = extract_text_without_qr(file_bytes, file.filename, qr_coords)
+        texte_scan = OCRService.extract_text(file_bytes, file.filename)
         ocr_info["zone_qr_masquee"] = qr_coords is not None
         ocr_info["chars_extraits"]  = len(texte_scan)
 
@@ -293,7 +295,11 @@ async def verify_document(
 
     if niveau1["valide"] and texte_scan.strip():
         niveau2["execute"] = True
-        hash_scan     = hashlib.sha256(OCRService.normalize(texte_scan).encode("utf-8")).digest()
+        # hash_scan     = hashlib.sha256(OCRService.normalize(texte_scan).encode("utf-8")).digest()
+        texte_extrait = OCRService.extract_text(file_bytes, file.filename)
+        hash_scan = hashlib.sha256(
+        OCRService.normalize(texte_extrait).encode("utf-8")
+        ).digest()
         hash_scan_b64 = base64.b64encode(hash_scan).decode()
 
         if hash_scan_b64 == niveau1["hash_reference"]:

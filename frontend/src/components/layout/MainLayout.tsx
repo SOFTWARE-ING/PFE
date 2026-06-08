@@ -16,9 +16,9 @@ const navItems: NavItem[] = [
   { to: "/dashboard/verify",       label: "Vérifier un document",  icon: <ScanSearch size={16} /> },
   { to: "/dashboard/sign",         label: "Signer un document",    icon: <FileSignature size={16} />, roles: ["agent_officiel"] },
   { to: "/dashboard/my-documents", label: "Mes documents",         icon: <FolderOpen size={16} />,   roles: ["agent_officiel"] },
-  { to: "/dashboard/signatures",   label: "Signatures",            icon: <ShieldCheck size={16} />,  roles: ["agent_officiel"] },
+  // { to: "/dashboard/signatures",   label: "Signatures",            icon: <ShieldCheck size={16} />,  roles: ["agent_officiel"] },
   { to: "/dashboard/keys",         label: "Clés cryptographiques", icon: <Key size={16} />,          roles: ["agent_officiel"] },
-  { to: "/dashboard/ocr",          label: "Extraction OCR",        icon: <ScanText size={16} /> },
+  // { to: "/dashboard/ocr",          label: "Extraction OCR",        icon: <ScanText size={16} /> },
   { to: "/dashboard/profile",      label: "Mon profil",            icon: <User size={16} /> },
 ];
 

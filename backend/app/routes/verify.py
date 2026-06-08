@@ -247,7 +247,7 @@ async def verify_document(
     else:
         try:
             sig_bytes   = base64.b64decode(encrypted_hash)
-            hash_orig   = hashlib.sha256(communique.contenu.encode("utf-8")).digest()
+            hash_orig   = hashlib.sha256(OCRService.normalize(communique.contenu).encode("utf-8")).digest()
             hash_orig_b64 = base64.b64encode(hash_orig).decode()
             niveau1["hash_reference"] = hash_orig_b64
 
@@ -293,7 +293,7 @@ async def verify_document(
 
     if niveau1["valide"] and texte_scan.strip():
         niveau2["execute"] = True
-        hash_scan     = hashlib.sha256(texte_scan.encode("utf-8")).digest()
+        hash_scan     = hashlib.sha256(OCRService.normalize(texte_scan).encode("utf-8")).digest()
         hash_scan_b64 = base64.b64encode(hash_scan).decode()
 
         if hash_scan_b64 == niveau1["hash_reference"]:

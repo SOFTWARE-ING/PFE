@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Upload, FileText, CheckCircle, Download,
   Archive, Loader2, Move, AlertCircle, RotateCcw,
@@ -7,55 +7,133 @@ import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Alert } from "../../components/ui/Alert";
 import { documentsAPI } from "../../services/api";
-import type { UploadResponse, FinalizeResponse } from "../../services/api";
+
+// ── pdf.js chargé depuis CDN ──────────────────────────────────────────────────
+declare global {
+  interface Window {
+    pdfjsLib: {
+      getDocument: (src: { data: ArrayBuffer }) => { promise: Promise<PDFDocumentProxy> };
+      GlobalWorkerOptions: { workerSrc: string };
+    };
+  }
+}
+interface PDFDocumentProxy {
+  getPage: (n: number) => Promise<PDFPageProxy>;
+}
+interface PDFPageProxy {
+  getViewport: (opts: { scale: number }) => { width: number; height: number };
+  render: (ctx: { canvasContext: CanvasRenderingContext2D; viewport: ReturnType<PDFPageProxy["getViewport"]> }) => { promise: Promise<void> };
+}
+
+function loadPdfJs(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) { resolve(); return; }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    script.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      resolve();
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = "upload" | "position" | "done";
 
-interface QRPosition {
-  x: number;
-  y: number;
-  page: number;
-  size: number;
-}
+interface UploadResponse  { communique_id: string; titre: string; hash?: string; }
+interface FinalizeResponse { communique_id: string; }
+interface QRPosition       { x: number; y: number; page: number; size: number; }
+
+// ─── Composant principal ──────────────────────────────────────────────────────
 
 export default function SignPage() {
-  const [step, setStep] = useState<Step>("upload");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [step, setStep]         = useState<Step>("upload");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
   const [dragOver, setDragOver] = useState(false);
 
-  const [uploadData, setUploadData] = useState<UploadResponse | null>(null);
+  const [uploadData, setUploadData]     = useState<UploadResponse | null>(null);
   const [finalizeData, setFinalizeData] = useState<FinalizeResponse | null>(null);
-  const [archived, setArchived] = useState(false);
+  const [archived, setArchived]         = useState(false);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
-  const [signData, setSignData] = useState<{ signature_id: string; qr_code: string } | null>(null);
+  const [signData, setSignData]         = useState<{ signature_id: string; qr_code: string } | null>(null);
 
-  const [qrPos, setQrPos] = useState<QRPosition>({ x: 50, y: 50, page: 1, size: 80 });
+  const [qrPos, setQrPos]       = useState<QRPosition>({ x: 50, y: 50, page: 1, size: 80 });
   const [isDragging, setIsDragging] = useState(false);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const dragStart = useRef<{ mx: number; my: number; qx: number; qy: number } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfReady, setPdfReady] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
+  const [renderScale, setRenderScale] = useState(1);
 
-  // ── Step 1: Upload + Sign ───────────────────────────────────────────────
+  const previewRef  = useRef<HTMLDivElement>(null);
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
+  const dragStart   = useRef<{ mx: number; my: number; qx: number; qy: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfDocRef   = useRef<PDFDocumentProxy | null>(null);
+
+  // ── Rendu PDF sur canvas ────────────────────────────────────────────────────
+
+  const renderPage = useCallback(async (pageNum: number) => {
+    if (!pdfDocRef.current || !canvasRef.current) return;
+    const page = await pdfDocRef.current.getPage(pageNum);
+    const containerW = previewRef.current?.offsetWidth ?? 700;
+    const viewport0  = page.getViewport({ scale: 1 });
+    const scale      = containerW / viewport0.width;
+    setRenderScale(scale);
+    const viewport   = page.getViewport({ scale });
+    const canvas     = canvasRef.current;
+    canvas.width     = viewport.width;
+    canvas.height    = viewport.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    setPdfReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (step === "position" && pdfDocRef.current) {
+      void renderPage(qrPos.page);
+    }
+  }, [qrPos.page, step, renderPage]);
+
+  // ── Step 1 : Upload + Sign ──────────────────────────────────────────────────
 
   const handleFile = useCallback(async (file: File) => {
-    if (!file.name.endsWith(".pdf")) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
       setError("Veuillez sélectionner un fichier PDF.");
       return;
     }
-    const title = file.name.replace(".pdf", "").replace(/_/g, " ");
+    const title = file.name.replace(/\.pdf$/i, "").replace(/_/g, " ");
     setLoading(true);
     setError("");
     try {
-      // Step 1: Upload
+      // Charger pdf.js + lire le fichier en parallèle
+      const [, arrayBuffer] = await Promise.all([
+        loadPdfJs(),
+        file.arrayBuffer(),
+      ]);
+
+      // Charger le document PDF pour l'aperçu
+      const pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      pdfDocRef.current = pdfDoc;
+      setTotalPages(1); // sera mis à jour ci-dessous
+
+      // Récupérer le nombre de pages
+      const docProxy = pdfDoc as unknown as { numPages: number };
+      setTotalPages(docProxy.numPages ?? 1);
+
+      // Upload
       const uploadResult = await documentsAPI.upload(file, title);
       setUploadData(uploadResult);
       setOriginalFile(file);
 
-      // Step 2: Sign automatically
+      // Sign automatiquement
       const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
-      const token = localStorage.getItem("shield_token");
-      const fd = new FormData();
+      const token   = localStorage.getItem("shield_token");
+      const fd      = new FormData();
       fd.append("communique_id", uploadResult.communique_id);
 
       const signRes = await fetch(`${API_URL}/documents/sign`, {
@@ -86,7 +164,7 @@ export default function SignPage() {
     if (file) void handleFile(file);
   };
 
-  // ── Step 2: QR drag on preview ─────────────────────────────────────────
+  // ── Drag du QR sur le canvas ────────────────────────────────────────────────
 
   const onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -95,37 +173,59 @@ export default function SignPage() {
   };
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !dragStart.current || !previewRef.current) return;
-    const rect = previewRef.current.getBoundingClientRect();
-    const dx = e.clientX - dragStart.current.mx;
-    const dy = e.clientY - dragStart.current.my;
-    const newX = Math.max(0, Math.min(rect.width - qrPos.size, dragStart.current.qx + dx));
+    if (!isDragging || !dragStart.current || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const dx   = e.clientX - dragStart.current.mx;
+    const dy   = e.clientY - dragStart.current.my;
+    const newX = Math.max(0, Math.min(rect.width  - qrPos.size, dragStart.current.qx + dx));
     const newY = Math.max(0, Math.min(rect.height - qrPos.size, dragStart.current.qy + dy));
     setQrPos((p) => ({ ...p, x: newX, y: newY }));
   }, [isDragging, qrPos.size]);
 
   const onMouseUp = () => setIsDragging(false);
 
-  // ── Step 3: Finalize (embed QR into PDF) ───────────────────────────────
+  // Touch support (mobile)
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    setIsDragging(true);
+    dragStart.current = { mx: t.clientX, my: t.clientY, qx: qrPos.x, qy: qrPos.y };
+  };
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging || !dragStart.current || !canvasRef.current) return;
+    e.preventDefault();
+    const t    = e.touches[0];
+    const rect = canvasRef.current.getBoundingClientRect();
+    const dx   = t.clientX - dragStart.current.mx;
+    const dy   = t.clientY - dragStart.current.my;
+    const newX = Math.max(0, Math.min(rect.width  - qrPos.size, dragStart.current.qx + dx));
+    const newY = Math.max(0, Math.min(rect.height - qrPos.size, dragStart.current.qy + dy));
+    setQrPos((p) => ({ ...p, x: newX, y: newY }));
+  }, [isDragging, qrPos.size]);
+
+  // ── Step 3 : Finaliser ──────────────────────────────────────────────────────
 
   const handleFinalize = async () => {
-    if (!uploadData || !signData || !originalFile || !previewRef.current) return;
+    if (!uploadData || !signData || !originalFile || !canvasRef.current) return;
     setLoading(true);
     setError("");
     try {
-      const previewW = previewRef.current.offsetWidth;
-      const previewH = previewRef.current.offsetHeight;
-      const pdfW = 595;
-      const pdfH = 842;
-      const pdfX = (qrPos.x / previewW) * pdfW;
-      const pdfY = pdfH - ((qrPos.y + qrPos.size) / previewH) * pdfH;
+      // Coordonnées canvas → coordonnées PDF réelles
+      const canvasW = canvasRef.current.width;
+      const canvasH = canvasRef.current.height;
+      const pdfW    = canvasW  / renderScale;
+      const pdfH    = canvasH  / renderScale;
+      const pdfX    = (qrPos.x / canvasRef.current.getBoundingClientRect().width)  * pdfW;
+      const pdfY    = pdfH - ((qrPos.y + qrPos.size) / canvasRef.current.getBoundingClientRect().height) * pdfH;
+      const pdfSize = (qrPos.size / canvasRef.current.getBoundingClientRect().width) * pdfW;
+
       const data = await documentsAPI.finalize(
         uploadData.communique_id,
         signData.signature_id,
         originalFile,
         pdfX,
         pdfY,
-        qrPos.size
+        pdfSize,
       );
       setFinalizeData(data);
       setStep("done");
@@ -136,7 +236,7 @@ export default function SignPage() {
     }
   };
 
-  // ── Step 4: Archive ────────────────────────────────────────────────────
+  // ── Step 4 : Archiver ───────────────────────────────────────────────────────
 
   const handleArchive = async () => {
     if (!uploadData) return;
@@ -160,28 +260,31 @@ export default function SignPage() {
     setOriginalFile(null);
     setArchived(false);
     setError("");
+    setPdfReady(false);
+    pdfDocRef.current = null;
     setQrPos({ x: 50, y: 50, page: 1, size: 80 });
   };
 
-  // ── Stepper ────────────────────────────────────────────────────────────
+  // ── Stepper ─────────────────────────────────────────────────────────────────
 
-  const steps = [
-    { key: "upload", label: "Téléverser" },
+  const steps     = [
+    { key: "upload",   label: "Téléverser"    },
     { key: "position", label: "Positionner QR" },
-    { key: "done", label: "Finaliser" },
+    { key: "done",     label: "Finaliser"      },
   ];
-
   const stepIndex = step === "upload" ? 0 : step === "position" ? 1 : 2;
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
 
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-army-900 dark:text-army-50">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-dark-100">
           Signer un document
         </h1>
-        <p className="text-sm text-army-500 dark:text-army-400 mt-0.5">
+        <p className="text-sm text-gray-500 dark:text-dark-400 mt-0.5">
           Téléversez votre PDF, positionnez le QR code et téléchargez le document signé.
         </p>
       </div>
@@ -197,19 +300,21 @@ export default function SignPage() {
                   ? "bg-emerald-500 text-white"
                   : i === stepIndex
                   ? "bg-army-600 text-white"
-                  : "bg-army-200 dark:bg-army-700 text-army-500 dark:text-army-400",
+                  : "bg-gray-200 dark:bg-dark-600 text-gray-500 dark:text-dark-400",
               ].join(" ")}>
                 {i < stepIndex ? <CheckCircle size={14} /> : i + 1}
               </div>
               <span className={[
                 "text-xs font-medium hidden sm:block",
-                i === stepIndex ? "text-army-600 dark:text-army-600" : "text-army-400",
+                i === stepIndex
+                  ? "text-army-600 dark:text-army-400"
+                  : "text-gray-400 dark:text-dark-400",
               ].join(" ")}>{s.label}</span>
             </div>
             {i < steps.length - 1 && (
               <div className={[
                 "flex-1 h-px",
-                i < stepIndex ? "bg-emerald-400" : "bg-army-200 dark:bg-army-700",
+                i < stepIndex ? "bg-emerald-400" : "bg-gray-200 dark:bg-dark-600",
               ].join(" ")} />
             )}
           </React.Fragment>
@@ -218,15 +323,15 @@ export default function SignPage() {
 
       {error && <Alert variant="error" message={error} />}
 
-      {/* ── STEP 1: Upload ── */}
+      {/* ── STEP 1 : Upload ── */}
       {step === "upload" && (
         <Card padding="none">
           <div
             className={[
               "relative border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer",
               dragOver
-                ? "border-army-600 bg-army-600 dark:bg-army-600/30"
-                : "border-army-200 dark:border-army-700 hover:border-army-600 dark:hover:border-army-600",
+                ? "border-army-500 bg-army-50 dark:bg-army-950/20"
+                : "border-gray-200 dark:border-dark-500 hover:border-army-500 dark:hover:border-army-500",
             ].join(" ")}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
@@ -249,14 +354,14 @@ export default function SignPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-full bg-army-600 dark:bg-army-600/40 flex items-center justify-center">
-                  <Upload size={24} className="text-army-600" />
+                <div className="w-14 h-14 rounded-full bg-army-50 dark:bg-dark-700 flex items-center justify-center">
+                  <Upload size={24} className="text-army-600 dark:text-army-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-army-800 dark:text-army-200">
+                  <p className="text-sm font-medium text-gray-800 dark:text-dark-100">
                     Glissez votre PDF ici ou cliquez pour choisir
                   </p>
-                  <p className="text-xs text-army-400 dark:text-army-500 mt-1">
+                  <p className="text-xs text-gray-400 dark:text-dark-400 mt-1">
                     Fichiers PDF uniquement
                   </p>
                 </div>
@@ -266,19 +371,19 @@ export default function SignPage() {
         </Card>
       )}
 
-      {/* ── STEP 2: Position QR ── */}
+      {/* ── STEP 2 : Positionner QR sur le vrai PDF ── */}
       {step === "position" && uploadData && (
         <div className="space-y-4">
 
-          {/* Document info */}
+          {/* Info document */}
           <Card padding="sm">
             <div className="flex items-center gap-3">
               <FileText size={18} className="text-army-600 shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-army-800 dark:text-army-200 truncate">
+                <p className="text-sm font-medium text-gray-800 dark:text-dark-100 truncate">
                   {uploadData.titre}
                 </p>
-                <p className="text-xs text-army-400 font-mono mt-0.5">
+                <p className="text-xs text-gray-400 font-mono mt-0.5">
                   Hash: {uploadData.hash?.slice(0, 24)}…
                 </p>
               </div>
@@ -286,88 +391,104 @@ export default function SignPage() {
             </div>
           </Card>
 
-          {/* QR size control */}
+          {/* Contrôles */}
           <Card padding="sm">
-            <div className="flex items-center gap-4">
-              <span className="text-xs text-army-500 dark:text-army-400 shrink-0">Taille QR :</span>
-              <input
-                type="range" min={50} max={150} value={qrPos.size}
-                onChange={(e) => setQrPos((p) => ({ ...p, size: Number(e.target.value) }))}
-                className="flex-1"
-              />
-              <span className="text-xs font-mono text-army-600 dark:text-army-300 w-10 text-right">
-                {qrPos.size}px
-              </span>
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Taille QR */}
+              <div className="flex items-center gap-3 flex-1 min-w-48">
+                <span className="text-xs text-gray-500 dark:text-dark-400 shrink-0">
+                  Taille QR :
+                </span>
+                <input
+                  type="range" min={40} max={160} value={qrPos.size}
+                  onChange={(e) => setQrPos((p) => ({ ...p, size: Number(e.target.value) }))}
+                  className="flex-1 accent-army-600"
+                />
+                <span className="text-xs font-mono text-army-600 dark:text-army-300 w-10 text-right">
+                  {qrPos.size}px
+                </span>
+              </div>
+              {/* Page selector */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 dark:text-dark-400">Page :</span>
+                  <select
+                    value={qrPos.page}
+                    onChange={(e) => {
+                      const p = Number(e.target.value);
+                      setQrPos((q) => ({ ...q, page: p }));
+                      setPdfReady(false);
+                    }}
+                    className="text-xs rounded-lg border border-gray-200 dark:border-dark-500 bg-white dark:bg-dark-700 text-gray-800 dark:text-dark-100 px-2 py-1"
+                  >
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>Page {i + 1}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </Card>
 
-          {/* PDF Preview with draggable QR */}
+          {/* Instruction */}
+          <div className="flex items-center gap-2 px-1">
+            <Move size={14} className="text-army-500 shrink-0" />
+            <p className="text-xs text-gray-500 dark:text-dark-400">
+              Glissez le QR code directement sur le document pour le positionner
+            </p>
+          </div>
+
+          {/* Zone PDF réel + QR draggable */}
           <Card padding="none" className="overflow-hidden">
-            <div className="px-4 py-3 border-b border-army-200 dark:border-army-800 flex items-center gap-2">
-              <Move size={14} className="text-army-400" />
-              <span className="text-xs text-army-500 dark:text-army-400">
-                Glissez le QR code à l'emplacement souhaité sur le document
-              </span>
-            </div>
             <div
               ref={previewRef}
-              className="relative bg-army-100 dark:bg-army-800 select-none"
-              style={{ minHeight: 500, cursor: isDragging ? "grabbing" : "default" }}
+              className="relative select-none overflow-auto bg-gray-100 dark:bg-dark-900"
+              style={{ cursor: isDragging ? "grabbing" : "default", maxHeight: "70vh" }}
               onMouseMove={onMouseMove}
               onMouseUp={onMouseUp}
               onMouseLeave={onMouseUp}
             >
-              <div
-                className="mx-auto bg-white dark:bg-army-900 shadow-lg"
-                style={{ width: "100%", minHeight: 500, position: "relative" }}
-              >
-                {/* Simulated text lines */}
-                <div className="p-8 space-y-3 pointer-events-none">
-                  <div className="h-4 bg-army-200 dark:bg-army-700 rounded w-2/3 mx-auto" />
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-full" />
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-5/6" />
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-full" />
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-4/5" />
-                  <div className="mt-4 p-3 bg-army-50 dark:bg-army-800/50 rounded border border-army-200 dark:border-army-700">
-                    <p className="text-xs text-army-500 dark:text-army-400 text-center italic">
-                      Aperçu du document — positionnez le QR code sur une zone vide
-                    </p>
+              {/* Canvas PDF — rendu réel */}
+              <div className="relative inline-block w-full">
+                {!pdfReady && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-dark-800 z-10">
+                    <Loader2 size={28} className="animate-spin text-army-600" />
                   </div>
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-full mt-4" />
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-3/4" />
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-full" />
-                  <div className="h-3 bg-army-100 dark:bg-army-800 rounded w-5/6" />
-                </div>
+                )}
+                <canvas
+                  ref={canvasRef}
+                  className="block w-full shadow-lg"
+                  style={{ display: pdfReady ? "block" : "none" }}
+                />
 
-                {/* Draggable QR */}
-                <div
-                  className="absolute border-2 border-army-600 bg-army-600 dark:bg-army-600/50 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg"
-                  style={{ left: qrPos.x, top: qrPos.y, width: qrPos.size, height: qrPos.size }}
-                  onMouseDown={onMouseDown}
-                >
-                  {signData?.qr_code ? (
+                {/* QR draggable positionné par-dessus le canvas */}
+                {pdfReady && signData?.qr_code && (
+                  <div
+                    className="absolute border-2 border-army-600 rounded-lg shadow-xl overflow-hidden cursor-grab active:cursor-grabbing"
+                    style={{
+                      left:   qrPos.x,
+                      top:    qrPos.y,
+                      width:  qrPos.size,
+                      height: qrPos.size,
+                      zIndex: 20,
+                    }}
+                    onMouseDown={onMouseDown}
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={() => setIsDragging(false)}
+                  >
                     <img
                       src={signData.qr_code}
-                      alt="QR"
-                      className="w-full h-full object-contain pointer-events-none rounded"
+                      alt="QR Code signature"
+                      className="w-full h-full object-contain pointer-events-none bg-white"
+                      draggable={false}
                     />
-                  ) : (
-                    <div className="text-center pointer-events-none">
-                      <div className="grid grid-cols-3 gap-0.5 w-8 mx-auto mb-1">
-                        {[...Array(9)].map((_, i) => (
-                          <div key={i} className={["w-2 h-2 rounded-sm",
-                            [0, 2, 6, 8].includes(i)
-                              ? "bg-army-600 dark:bg-army-600"
-                              : i === 4
-                              ? "bg-army-600"
-                              : "bg-army-600 dark:bg-army-600",
-                          ].join(" ")} />
-                        ))}
-                      </div>
-                      <span className="text-[8px] text-army-600 dark:text-army-600 font-bold">QR</span>
+                    {/* Indicateur de drag */}
+                    <div className="absolute inset-0 bg-army-600/10 flex items-end justify-end p-1 pointer-events-none">
+                      <Move size={10} className="text-army-600 opacity-70" />
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -387,7 +508,7 @@ export default function SignPage() {
         </div>
       )}
 
-      {/* ── STEP 3: Done ── */}
+      {/* ── STEP 3 : Done ── */}
       {step === "done" && finalizeData && (
         <div className="space-y-4">
           <Card padding="md">
@@ -396,26 +517,26 @@ export default function SignPage() {
                 <CheckCircle size={32} className="text-emerald-500" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-army-900 dark:text-army-50">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-dark-100">
                   Document signé avec succès !
                 </h2>
-                <p className="text-sm text-army-500 dark:text-army-400 mt-1">
+                <p className="text-sm text-gray-500 dark:text-dark-400 mt-1">
                   Le QR code a été intégré au document PDF.
                 </p>
               </div>
             </div>
           </Card>
 
-          {/* Download */}
+          {/* Téléchargement */}
           <Card padding="sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <FileText size={18} className="text-army-600 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-army-800 dark:text-army-200 truncate">
+                  <p className="text-sm font-medium text-gray-800 dark:text-dark-100 truncate">
                     {uploadData?.titre}
                   </p>
-                  <p className="text-xs text-army-400 dark:text-army-500 mt-0.5">
+                  <p className="text-xs text-gray-400 dark:text-dark-400 mt-0.5">
                     Document signé prêt au téléchargement
                   </p>
                 </div>
@@ -433,7 +554,7 @@ export default function SignPage() {
             </div>
           </Card>
 
-          {/* Archive prompt */}
+          {/* Archivage */}
           {!archived ? (
             <Card padding="md" className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
               <div className="flex items-start gap-3">
@@ -443,8 +564,8 @@ export default function SignPage() {
                     Archiver ce document ?
                   </p>
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    L'archivage rend le document accessible via la recherche publique et permet aux citoyens de le télécharger.
-                    Les documents non archivés restent privés.
+                    L'archivage rend le document accessible via la recherche publique
+                    et permet aux citoyens de le télécharger. Les documents non archivés restent privés.
                   </p>
                   <div className="flex gap-2 mt-3">
                     <Button

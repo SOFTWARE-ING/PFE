@@ -23,6 +23,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.exceptions import InvalidSignature
 from cryptography.fernet import Fernet
 from sqlalchemy.orm import Session
+from app.services.ocr_service import OCRService
 
 from app.models.models import (
     Signature, CleCryptographique, Communique, 
@@ -131,8 +132,8 @@ class SignatureService:
                     "Vous avez déjà signé ce communiqué"
                 )
             
-            # 3. Calcule le hash du document
-            document_hash = self._hash_content(communique.contenu.encode('utf-8'))
+            # 3. Calcule le hash du document (texte normalisé — cohérent avec la vérification)
+            document_hash = self._hash_content(OCRService.normalize(communique.contenu).encode('utf-8'))
             
             # 4. Récupère la clé privée active de l'agent
             cle = self._get_active_key(agent_id)

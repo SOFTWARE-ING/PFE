@@ -22,6 +22,7 @@ import base64
 import difflib
 import hashlib
 import json
+import logging
 from typing import Optional, Tuple, Dict, Any
 
 from cryptography.exceptions import InvalidSignature
@@ -42,6 +43,8 @@ from app.services.qr_scanner_service import (
     detect_and_decode_qr,
     extract_text_without_qr,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/verify", tags=["Vérification Publique"])
 
@@ -171,6 +174,7 @@ async def verify_document(
         )
 
     file_bytes = await file.read()
+    logger.info(f"Verification request: {file.filename} ({len(file_bytes)} bytes)")
 
     # ════════════════════════════════════════════════════════════════════════
     # ÉTAPE 0 — Détection automatique du QR code
@@ -178,9 +182,11 @@ async def verify_document(
     try:
         qr_dict, qr_coords = detect_and_decode_qr(file_bytes, file.filename)
     except RuntimeError as e:
+        logger.error(f"QR detection runtime error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
     if qr_dict is None:
+        logger.warning(f"No SHIELD QR code detected in {file.filename}")
         raise HTTPException(
             status_code=422,
             detail=(
@@ -190,6 +196,8 @@ async def verify_document(
             ),
         )
 
+    logger.info(f"QR code detected at coordinates: {qr_coords}")
+    
     # Valider les champs requis du QR
     sig_id         = qr_dict.get("sig_id")
     com_id         = qr_dict.get("com_id")
@@ -278,7 +286,17 @@ async def verify_document(
     ocr_info   = {"zone_qr_masquee": False, "chars_extraits": 0}
 
     if niveau1["valide"]:
-        texte_scan = OCRService.extract_text(file_bytes, file.filename)
+        # Use masked OCR that removes the QR zone and applies fallbacks
+        try:
+            texte_scan = extract_text_without_qr(file_bytes, file.filename, qr_coords)
+        except Exception as e:
+            logger.warning(f"extract_text_without_qr failed: {e}")
+            # fallback to the generic OCRService
+            try:
+                texte_scan = OCRService.extract_text(file_bytes, file.filename)
+            except Exception as e2:
+                logger.error(f"Fallback OCRService.extract_text failed: {e2}")
+                texte_scan = ""
         ocr_info["zone_qr_masquee"] = qr_coords is not None
         ocr_info["chars_extraits"]  = len(texte_scan)
 
@@ -296,7 +314,11 @@ async def verify_document(
     if niveau1["valide"] and texte_scan.strip():
         niveau2["execute"] = True
         # hash_scan     = hashlib.sha256(OCRService.normalize(texte_scan).encode("utf-8")).digest()
-        texte_extrait = OCRService.extract_text(file_bytes, file.filename)
+        # Ensure we compute hash from OCR that had QR zone masked
+        try:
+            texte_extrait = extract_text_without_qr(file_bytes, file.filename, qr_coords)
+        except Exception:
+            texte_extrait = texte_scan
         hash_scan = hashlib.sha256(
         OCRService.normalize(texte_extrait).encode("utf-8")
         ).digest()

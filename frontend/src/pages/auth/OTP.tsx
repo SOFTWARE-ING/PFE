@@ -29,6 +29,7 @@ export default function OTP() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [timer, setTimer] = useState(COUNTDOWN_SECONDS);
+  const [codeSent, setCodeSent] = useState(false); // Prevent duplicate sends
 
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -39,38 +40,21 @@ export default function OTP() {
     }
   }, [state, navigate]);
 
-  // Auto-send email code on page load
+  // Send email code ONCE on page load
   useEffect(() => {
-    if (state?.temp_token) {
-      authAPI.requestEmail2FA(state.temp_token).catch(() => {});
+    if (state?.temp_token && !codeSent) {
+      authAPI.requestEmail2FA(state.temp_token)
+        .then(() => setCodeSent(true))
+        .catch(() => setCodeSent(true)); // Mark sent even if failed, user can resend manually
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [state?.temp_token, codeSent]);
 
-  // Countdown — when it hits 0, auto-resend
+  // Countdown timer — do NOT auto-resend (user must click manually)
   useEffect(() => {
-    if (timer <= 0) {
-      handleAutoResend();
-      return;
-    }
+    if (timer <= 0) return; // Stop at 0, don't auto-resend
     const t = setTimeout(() => setTimer((c) => c - 1), 1000);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timer]);
-
-  const handleAutoResend = useCallback(async () => {
-    if (!state?.temp_token) return;
-    try {
-      await authAPI.requestEmail2FA(state.temp_token);
-      setSuccess("Un nouveau code vous a été envoyé par email.");
-      setOtp(Array(OTP_LENGTH).fill("") as OTPCode);
-      inputsRef.current[0]?.focus();
-      setTimer(COUNTDOWN_SECONDS);
-      setTimeout(() => setSuccess(""), 4000);
-    } catch {
-      setError("Impossible d'envoyer le code. Veuillez réessayer.");
-    }
-  }, [state]);
 
   const submitCode = useCallback(async (code: string) => {
     if (!state?.temp_token) return;

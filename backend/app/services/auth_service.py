@@ -138,6 +138,15 @@ class AuthService:
         if not self._has_2fa_enabled(user_id):
             return False, "Le 2FA n'est pas activé pour ce compte"
         
+        # Rate limiting: prevent sending more than one code per 30 seconds
+        recent_code = self.db.query(AuthEmailCode).filter(
+            AuthEmailCode.id_utilisateur == user_id,
+            AuthEmailCode.date_expiration > datetime.now() - timedelta(seconds=30)
+        ).first()
+        
+        if recent_code:
+            return False, "Vous avez déjà reçu un code. Veuillez attendre 30 secondes avant d'en demander un nouveau."
+        
         # Génère un code à 6 chiffres
         code = EmailService.generate_code()
         

@@ -18,6 +18,11 @@ import hashlib
 import json
 import os
 import uuid
+
+import zlib
+import qrcode
+import qrcode.constants
+
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -134,28 +139,34 @@ def sign_document(
         Signature.id_signature == result.signature_id
     ).first()
 
-    qr_metadata = {
-        "v": "1",
-        "sig_id": result.signature_id,
-        "com_id": communique_id,
-        "agent_id": user_id,
-        "key_fp": key_fingerprint,
-        "encrypted_hash": sig.valeur_signature if sig else "",
-        "algo": "RSA-PSS-SHA256",
-        "ts": datetime.utcnow().isoformat()
+
+    def _compress_uuid(uid: str) -> str:
+        raw = bytes.fromhex(uid.replace("-", ""))
+        return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+    payload = {
+        "v": "3",
+        "s": _compress_uuid(result.signature_id),
+        "c": _compress_uuid(communique_id),
+        "a": _compress_uuid(user_id),
+        "k": key_fingerprint,
+        "h": sig.valeur_signature if sig else "",
+        "t": datetime.utcnow().strftime("%Y-%m-%dT%H:%M"),
     }
 
+    json_str   = json.dumps(payload, separators=(",", ":"))
+    compressed = zlib.compress(json_str.encode("utf-8"), level=9)
+    qr_data    = "SHIELD3:" + base64.b85encode(compressed).decode("ascii")
+
     if sig:
-        sig.metadata_qr = json.dumps(qr_metadata)
+        sig.metadata_qr = qr_data
         db.commit()
 
-    import qrcode
-    qr_data = json.dumps(qr_metadata)
     qr = qrcode.QRCode(
         version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=8,
-        border=2
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4,
     )
     qr.add_data(qr_data)
     qr.make(fit=True)
@@ -169,7 +180,7 @@ def sign_document(
         "signature_id": result.signature_id,
         "communique_id": communique_id,
         "qr_code": f"data:image/png;base64,{qr_base64}",
-        "qr_metadata": qr_metadata,
+        "qr_metadata": qr_data,
         "message": "Document signé. Placez le QR code sur le document."
     }
 
@@ -209,7 +220,12 @@ async def finalize_document(
     from reportlab.pdfgen import canvas
     import PyPDF2
 
-    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=8, border=2)
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4,
+    )
     qr.add_data(sig.metadata_qr)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")

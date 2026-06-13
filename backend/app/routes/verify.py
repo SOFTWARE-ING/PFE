@@ -23,6 +23,7 @@ import difflib
 import hashlib
 import json
 import logging
+import zlib
 from typing import Optional, Tuple, Dict, Any
 
 from cryptography.exceptions import InvalidSignature
@@ -198,12 +199,52 @@ async def verify_document(
 
     logger.info(f"QR code detected at coordinates: {qr_coords}")
     
-    # Valider les champs requis du QR
-    sig_id         = qr_dict.get("sig_id")
-    com_id         = qr_dict.get("com_id")
-    agent_id       = qr_dict.get("agent_id")
-    key_fp         = qr_dict.get("key_fp", "")
-    encrypted_hash = qr_dict.get("encrypted_hash", "")
+    
+ # Valider les champs requis du QR
+    def _expand_uuid(short: str) -> str:
+        pad = (4 - len(short) % 4) % 4
+        b   = base64.urlsafe_b64decode(short + "=" * pad)
+        h   = b.hex()
+        return f"{h[0:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
+
+    def _decode_qr_payload(raw_data: dict, raw_string: str) -> tuple:
+        """
+        Retourne (sig_id, com_id, agent_id, key_fp, encrypted_hash)
+        Compatible v1 (JSON brut) et v3 (UUIDs courts + zlib + base85).
+        raw_data  = qr_dict déjà parsé par detect_and_decode_qr
+        raw_string = la chaîne brute décodée du QR
+        """
+        v = raw_data.get("v", "1")
+
+        if v == "3":
+            try:
+                compressed = base64.b85decode(raw_string[8:])  # retire "SHIELD3:"
+                data       = json.loads(zlib.decompress(compressed).decode("utf-8"))
+                return (
+                    _expand_uuid(data["s"]),
+                    _expand_uuid(data["c"]),
+                    _expand_uuid(data["a"]),
+                    data["k"],
+                    data["h"],
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"QR code v3 invalide — décompression échouée : {str(e)}"
+                )
+        else:
+            # v1 — ancien format JSON brut
+            return (
+                raw_data.get("sig_id"),
+                raw_data.get("com_id"),
+                raw_data.get("agent_id"),
+                raw_data.get("key_fp", ""),
+                raw_data.get("encrypted_hash", ""),
+            )
+
+    sig_id, com_id, agent_id, key_fp, encrypted_hash = _decode_qr_payload(
+        qr_dict, qr_dict.get("_raw", json.dumps(qr_dict))
+    )
 
     if not all([sig_id, com_id, agent_id, encrypted_hash]):
         raise HTTPException(

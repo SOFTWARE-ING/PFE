@@ -184,61 +184,100 @@ def detect_and_decode_qr(
 def _try_decode_qr(img: Image.Image, pyzbar_decode) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[int, int, int, int]]]:
     """
     Tentative unique de détection et décodage du QR code.
-    
-    Retourne :
-      (qr_data_dict, coords) si QR SHIELD valide trouvé
-      (None, None)           sinon
+    Compatible v1 (JSON brut) et v3 (SHIELD3: + zlib + base85).
     """
+    import base64, zlib
+
+    def _expand_uuid(short: str) -> str:
+        pad = (4 - len(short) % 4) % 4
+        b   = base64.urlsafe_b64decode(short + "=" * pad)
+        h   = b.hex()
+        return f"{h[0:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
+
+    def _decode_shield_payload(raw: str) -> Optional[Dict[str, Any]]:
+        """
+        Décode le payload QR quel que soit le format :
+          - v3 : "SHIELD3:<base85(zlib(json))>"
+          - v1 : JSON brut
+        Retourne toujours un dict avec les clés normalisées
+        sig_id, com_id, agent_id, key_fp, encrypted_hash.
+        """
+        # ── Format v3 — compressé ────────────────────────────────────────
+        if raw.startswith("SHIELD3:"):
+            try:
+                compressed = base64.b85decode(raw[8:])
+                data       = json.loads(zlib.decompress(compressed).decode("utf-8"))
+                return {
+                    "sig_id":         _expand_uuid(data["s"]),
+                    "com_id":         _expand_uuid(data["c"]),
+                    "agent_id":       _expand_uuid(data["a"]),
+                    "key_fp":         data.get("k", ""),
+                    "encrypted_hash": data.get("h", ""),
+                    "algo":           "RSA-PSS-SHA256",
+                    "ts":             data.get("t", ""),
+                    "v":              "3",
+                    "_raw":           raw,
+                }
+            except Exception as e:
+                logger.warning(f"SHIELD3 decompression failed: {e}")
+                return None
+
+        # ── Format v1 — JSON brut ────────────────────────────────────────
+        try:
+            data = json.loads(raw)
+            data["_raw"] = raw
+            return data
+        except json.JSONDecodeError:
+            return None
+
     try:
         decoded_objects = pyzbar_decode(img)
         logger.debug(f"pyzbar scan returned {len(decoded_objects)} object(s)")
-        
+
         for idx, obj in enumerate(decoded_objects):
             logger.debug(f"Object {idx}: type={obj.type}, size=({obj.rect.width}x{obj.rect.height})")
-            
+
             if obj.type not in ("QRCODE", "QR"):
                 logger.debug(f"Object {idx} is not a QR code (type: {obj.type}), skipping")
                 continue
-            
+
             try:
                 raw = obj.data.decode("utf-8")
                 logger.debug(f"Object {idx} decoded as UTF-8, length={len(raw)}")
-                
-                qr_dict = json.loads(raw)
-                logger.info(f"Object {idx} is valid JSON with keys: {list(qr_dict.keys())}")
-                
-                # Coordonnées du QR code dans l'image
-                rect = obj.rect  # pyzbar.Rect(left, top, width, height)
-                coords = (rect.left, rect.top, rect.width, rect.height)
-                
-                # Vérifier que c'est un QR SHIELD (contient les champs requis)
-                required_fields = {"sig_id", "com_id", "agent_id", "encrypted_hash"}
-                present_fields = set(qr_dict.keys())
-                missing = required_fields - present_fields
-                
-                if missing:
-                    logger.warning(f"QR code valid JSON but missing SHIELD fields: {missing}")
+
+                qr_dict = _decode_shield_payload(raw)
+                if qr_dict is None:
+                    logger.debug(f"Object {idx} is not a valid SHIELD QR payload")
                     continue
-                
-                logger.info(f"✅ Valid SHIELD QR code detected at {coords}")
+
+                logger.info(f"Object {idx} decoded, version={qr_dict.get('v','1')}, keys: {list(qr_dict.keys())}")
+
+                # Vérifier les champs requis (communs v1 et v3)
+                required_fields = {"sig_id", "com_id", "agent_id", "encrypted_hash"}
+                missing = required_fields - set(qr_dict.keys())
+                if missing:
+                    logger.warning(f"QR code missing SHIELD fields: {missing}")
+                    continue
+
+                # Coordonnées dans l'image
+                rect   = obj.rect
+                coords = (rect.left, rect.top, rect.width, rect.height)
+
+                logger.info(f"✅ Valid SHIELD QR code detected at {coords}, v={qr_dict.get('v','1')}")
                 return qr_dict, coords
-                
-            except json.JSONDecodeError as e:
-                logger.debug(f"Object {idx} is not valid JSON: {e}")
-                continue
+
             except UnicodeDecodeError as e:
                 logger.debug(f"Object {idx} cannot be decoded as UTF-8: {e}")
                 continue
             except Exception as e:
                 logger.warning(f"Object {idx} processing error: {e}")
                 continue
-        
+
         return None, None
-        
+
     except Exception as e:
         logger.error(f"pyzbar scan error: {e}")
         return None, None
-
 
 def mask_qr_zone(
     img: Image.Image,

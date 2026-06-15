@@ -3,19 +3,16 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import {
-  Text, View, ActivityIndicator, StyleSheet, StatusBar,
-} from 'react-native';
+import { Text } from 'react-native';
 
-import { useAuth } from '../context/AuthContext';
-import { COLORS }  from '../theme/colors';
-
-import LoginScreen         from '../screens/LoginScreen';
 import HomeScreen          from '../screens/HomeScreen';
 import DetailScreen        from '../screens/DetailScreen';
 import ScanScreen          from '../screens/ScanScreen';
 import VerifyScreen        from '../screens/VerifyScreen';
+import SearchScreen        from '../screens/SearchScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import SettingsScreen      from '../screens/SettingsScreen';
+import { COLORS } from '../theme/colors';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -23,9 +20,10 @@ const Stack = createStackNavigator();
 // ─── Icônes tab bar ───────────────────────────────────────────────────
 const TAB_ICONS = {
   Home:          { emoji: '🏠', label: 'Accueil' },
-  Scanner:       { emoji: '📷', label: 'Scanner' },
+  Search:        { emoji: '🔍', label: 'Recherche' },
+  Scanner:       { emoji: '📷', label: 'Vérifier' },
   Notifications: { emoji: '🔔', label: 'Alertes' },
-  Profile:       { emoji: '👤', label: 'Profil' },
+  Settings:      { emoji: '⚙️', label: 'Paramètres' },
 };
 
 // ─── Stack : Accueil → Détail ─────────────────────────────────────────
@@ -38,7 +36,17 @@ function HomeStack() {
   );
 }
 
-// ─── Stack : Scanner → Résultat ───────────────────────────────────────
+// ─── Stack : Recherche → Détail ───────────────────────────────────────
+function SearchStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="SearchList" component={SearchScreen} />
+      <Stack.Screen name="Detail"     component={DetailScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// ─── Stack : Scanner/Upload → Résultat ─────────────────────────────────
 function ScanStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -47,65 +55,6 @@ function ScanStack() {
     </Stack.Navigator>
   );
 }
-
-// ─── Placeholder Profil ───────────────────────────────────────────────
-function ProfileScreen() {
-  const { user, logout } = useAuth();
-  const initials = user?.name
-    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'U';
-
-  return (
-    <View style={pStyles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
-      <View style={pStyles.header}>
-        <Text style={pStyles.headerTitle}>Profil</Text>
-      </View>
-      <View style={pStyles.body}>
-        <View style={pStyles.avatar}>
-          <Text style={pStyles.avatarText}>{initials}</Text>
-        </View>
-        <Text style={pStyles.name}>{user?.name || 'Utilisateur'}</Text>
-        <Text style={pStyles.email}>{user?.email || ''}</Text>
-        <Text
-          style={pStyles.logoutBtn}
-          onPress={logout}
-        >
-          Se déconnecter
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-const pStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgDeep },
-  header: {
-    paddingHorizontal: 16, paddingTop: 54, paddingBottom: 16,
-    backgroundColor: COLORS.bgDeep,
-  },
-  headerTitle: { color: COLORS.textWhite, fontSize: 20, fontWeight: '700' },
-  body: {
-    flex: 1, backgroundColor: COLORS.bgWhite,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    alignItems: 'center', paddingTop: 40,
-  },
-  avatar: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: COLORS.accent,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 14,
-  },
-  avatarText: { color: '#fff', fontSize: 28, fontWeight: '700' },
-  name:       { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 4 },
-  email:      { fontSize: 13, color: COLORS.textSecondary, marginBottom: 30 },
-  logoutBtn: {
-    fontSize: 14, color: COLORS.alertText, fontWeight: '600',
-    paddingVertical: 10, paddingHorizontal: 24,
-    borderWidth: 1.5, borderColor: COLORS.alertText,
-    borderRadius: 10, overflow: 'hidden',
-  },
-});
 
 // ─── Onglets principaux ───────────────────────────────────────────────
 function MainTabs() {
@@ -136,64 +85,19 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home"          component={HomeStack} />
+      <Tab.Screen name="Search"        component={SearchStack} />
       <Tab.Screen name="Scanner"       component={ScanStack} />
       <Tab.Screen name="Notifications" component={NotificationsScreen} />
-      <Tab.Screen name="Profile"       component={ProfileScreen} />
+      <Tab.Screen name="Settings"      component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
 
-// ─── Splash écran de chargement ───────────────────────────────────────
-function SplashScreen() {
-  return (
-    <View style={splashStyles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
-      <View style={splashStyles.logoBox}>
-        <Text style={splashStyles.logoEmoji}>🛡️</Text>
-      </View>
-      <Text style={splashStyles.appName}>CommuniSigne</Text>
-      <ActivityIndicator
-        size="large"
-        color={COLORS.accentLight}
-        style={{ marginTop: 40 }}
-      />
-    </View>
-  );
-}
-
-const splashStyles = StyleSheet.create({
-  container: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: COLORS.bgDeep,
-  },
-  logoBox: {
-    width: 80, height: 80, borderRadius: 22,
-    backgroundColor: COLORS.accent,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: COLORS.accent,
-    shadowOpacity: 0.5, shadowRadius: 16,
-    elevation: 10,
-  },
-  logoEmoji: { fontSize: 42 },
-  appName:   { fontSize: 22, fontWeight: '700', color: COLORS.textWhite, letterSpacing: 0.5 },
-});
-
-// ─── Routeur principal ────────────────────────────────────────────────
+// ─── Routeur principal (pas d'authentification pour cette v1) ──────────
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
-
-  if (loading) return <SplashScreen />;
-
   return (
     <NavigationContainer>
-      {user ? (
-        <MainTabs />
-      ) : (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-        </Stack.Navigator>
-      )}
+      <MainTabs />
     </NavigationContainer>
   );
 }

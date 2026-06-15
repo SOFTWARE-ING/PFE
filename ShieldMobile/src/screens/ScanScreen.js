@@ -16,7 +16,7 @@ export default function ScanScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
   const cameraRef = useRef(null);
-
+  const [torchOn, setTorchOn] = useState(false);
   const runVerification = async (file) => {
     setLoading(true);
     try {
@@ -134,7 +134,19 @@ export default function ScanScreen({ navigation }) {
       </View>
 
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          enableTorch={torchOn}
+        />
+        <TouchableOpacity
+          style={styles.torchBtn}
+          onPress={() => setTorchOn((t) => !t)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.torchBtnText}>{torchOn ? '🔆' : '🔦'}</Text>
+        </TouchableOpacity>
         <View style={styles.overlay}>
           <View style={styles.scanFrame}>
             <View style={[styles.corner, styles.cornerTL]} />
@@ -181,7 +193,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
 
   loadingText: { color: COLORS.textWhite, fontSize: 15, fontWeight: '600', marginTop: 16 },
-  loadingSub:  { color: COLORS.accentMuted, fontSize: 12, marginTop: 6, textAlign: 'center' },
+  loadingSub: { color: COLORS.accentMuted, fontSize: 12, marginTop: 6, textAlign: 'center' },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -195,6 +207,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center', alignItems: 'center',
   },
+  torchBtn: {
+    position: 'absolute', top: 14, right: 14, zIndex: 10,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  torchBtnText: { fontSize: 20 },
   scanFrame: {
     width: FRAME_SIZE, height: FRAME_SIZE * 1.3,
     justifyContent: 'center', alignItems: 'center',
@@ -221,9 +240,9 @@ const styles = StyleSheet.create({
   },
   captureBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
-  permIcon:  { fontSize: 48, marginBottom: 14 },
+  permIcon: { fontSize: 48, marginBottom: 14 },
   permTitle: { color: COLORS.textWhite, fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  permText:  { color: COLORS.accentMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  permText: { color: COLORS.accentMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   permBtn: {
     marginTop: 20, backgroundColor: COLORS.accent,
     paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12,
@@ -235,7 +254,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
   },
   pickLabel: { color: COLORS.accentMuted, fontSize: 11, marginBottom: 8 },
-  pickRow:   { flexDirection: 'row', gap: 10 },
+  pickRow: { flexDirection: 'row', gap: 10 },
   pickBtn: {
     flex: 1, backgroundColor: COLORS.bgCard,
     borderWidth: 1, borderColor: COLORS.borderInput,

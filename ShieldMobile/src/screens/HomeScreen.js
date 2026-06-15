@@ -6,7 +6,6 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { getRecentCommuniques } from '../api/apiClient';
-import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../theme/colors';
 
 const DocIcon = () => (
@@ -41,7 +40,6 @@ function CommuniqueCard({ item, onPress }) {
 }
 
 export default function HomeScreen({ navigation }) {
-  const { user }                      = useAuth();
   const [communiques, setCommuniques] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
@@ -62,20 +60,17 @@ export default function HomeScreen({ navigation }) {
 
   const onRefresh = () => { setRefreshing(true); fetchCommuniques(); };
 
-  const initials = (user?.prenom?.[0] || user?.name?.[0] || 'U').toUpperCase();
-  const firstName = user?.prenom || user?.name?.split(' ')[0] || 'Utilisateur';
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
 
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Bonjour,</Text>
-          <Text style={styles.name}>{firstName}</Text>
+          <Text style={styles.greeting}>Bienvenue sur</Text>
+          <Text style={styles.name}>Shield</Text>
         </View>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+          <Text style={styles.avatarText}>🛡️</Text>
         </View>
       </View>
 

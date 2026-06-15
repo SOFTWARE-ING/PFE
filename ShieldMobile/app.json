@@ -21,7 +21,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#f0f4ff"
       },
-      "package": "com.shield.mobile"
+      "package": "com.shield.mobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,13 +42,12 @@
         {
           "photosPermission": "SHIELD a besoin d'accéder à vos photos pour vérifier un document."
         }
-      ],
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.VOTRE_IOS_CLIENT_ID_NUMERIQUE"
-        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4127ad6c-7cbf-44bf-85b5-ed5fe6693a0d"
+      }
+    }
   }
 }

@@ -1,59 +1,18 @@
 // src/api/apiClient.js
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// 🔧 Adresse IP locale de la machine qui héberge le backend FastAPI.
-// Depuis un téléphone, "localhost" désigne le téléphone lui-même —
-// utilisez l'IP locale de votre PC (ex: 192.168.1.42) sur le même réseau Wi-Fi,
-// et lancez le backend avec :
-//   uvicorn app.main:app --host 0.0.0.0 --port 8000
-export const BASE_URL = 'http://192.168.1.100:8000/api';
+import { getApiBaseUrl } from '../config/serverConfig';
 
 const apiClient = axios.create({
-  baseURL: BASE_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Ajoute automatiquement le token JWT à chaque requête
-apiClient.interceptors.request.use(
-  async (config) => {
-    const token = await AsyncStorage.getItem('jwt_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Gère les erreurs globalement (ex: token expiré)
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      await AsyncStorage.removeItem('jwt_token');
-      await AsyncStorage.removeItem('user_data');
-    }
-    return Promise.reject(error);
-  }
-);
-
-// ─── AUTHENTIFICATION ─────────────────────────────────────────────────
-
-// Connexion via Google : envoie le id_token Google au backend,
-// reçoit un JWT SHIELD + les infos utilisateur en retour.
-export const loginWithGoogle = async (idToken) => {
-  const response = await apiClient.post('/auth/google', { id_token: idToken });
-  return response.data; // { success, message, access_token, user }
-};
-
-export const getMe = async () => {
-  const response = await apiClient.get('/auth/me');
-  return response.data;
-};
+// Définit dynamiquement l'URL de base à chaque requête,
+// selon l'adresse configurée par l'utilisateur dans "Paramètres".
+apiClient.interceptors.request.use(async (config) => {
+  config.baseURL = await getApiBaseUrl();
+  return config;
+});
 
 // ─── COMMUNIQUÉS / RECHERCHE ──────────────────────────────────────────
 

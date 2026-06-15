@@ -337,6 +337,58 @@ def get_recent_communiques(
     }
 
 
+@router.get("/communique/{communique_id}")
+def get_communique_detail(communique_id: str, db: Session = Depends(get_db)):
+    """
+    Détail public d'un communiqué (utilisé par l'application mobile).
+    Inclut l'institution et le signataire, déduits via la Signature liée.
+    """
+    from app.models.models import Signature, AgentOfficiel, Utilisateur as UtilisateurModel
+
+    communique = db.query(Communique).filter(
+        Communique.id_communique == communique_id
+    ).first()
+
+    if not communique:
+        raise HTTPException(status_code=404, detail="Communiqué non trouvé")
+
+    signature = db.query(Signature).filter(
+        Signature.id_communique == communique.id_communique
+    ).order_by(Signature.date_signature.desc()).first()
+
+    signataire = {"nom": None, "role": None}
+    institution = None
+
+    if signature:
+        agent_info = db.query(AgentOfficiel).filter(
+            AgentOfficiel.id_utilisateur == signature.id_agent_officiel
+        ).first()
+        agent_user = db.query(UtilisateurModel).filter(
+            UtilisateurModel.id_utilisateur == signature.id_agent_officiel
+        ).first()
+        if agent_user:
+            signataire["nom"] = f"{agent_user.prenom} {agent_user.nom}"
+        if agent_info:
+            signataire["role"] = agent_info.fonction
+            institution = agent_info.id_institution
+
+    return {
+        "success": True,
+        "communique": {
+            "id_communique": communique.id_communique,
+            "titre": communique.titre,
+            "contenu": communique.contenu,
+            "statut": communique.statut,
+            "date_publication": communique.date_publication,
+            "institution": institution,
+            "signataire": signataire,
+            "est_valide": bool(signature.est_valide) if signature else False,
+            "date_signature": signature.date_signature if signature else None,
+            "hash_contenu": communique.hash_contenu,
+        }
+    }
+
+
 # ============================================================================
 # ENDPOINT DE TEST (comparaison des algorithmes)
 # ============================================================================

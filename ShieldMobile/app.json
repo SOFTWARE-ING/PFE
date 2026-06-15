@@ -25,6 +25,26 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SHIELD a besoin d'accéder à la caméra pour photographier les documents à vérifier."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SHIELD a besoin d'accéder à vos photos pour vérifier un document."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.VOTRE_IOS_CLIENT_ID_NUMERIQUE"
+        }
+      ]
+    ]
   }
 }

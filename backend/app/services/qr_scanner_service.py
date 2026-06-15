@@ -197,12 +197,35 @@ def _try_decode_qr(img: Image.Image, pyzbar_decode) -> Tuple[Optional[Dict[str, 
     def _decode_shield_payload(raw: str) -> Optional[Dict[str, Any]]:
         """
         Décode le payload QR quel que soit le format :
-          - v3 : "SHIELD3:<base85(zlib(json))>"
-          - v1 : JSON brut
+          - v4 : "S4:<base32(zlib(json))>"            ← nouveau, mode alphanumérique
+          - v3 : "SHIELD3:<base85(zlib(json))>"        ← ancien
+          - v1 : JSON brut                             ← très ancien
         Retourne toujours un dict avec les clés normalisées
         sig_id, com_id, agent_id, key_fp, encrypted_hash.
         """
-        # ── Format v3 — compressé ────────────────────────────────────────
+        # ── Format v4 — base32 + zlib (mode alphanumérique QR) ────────────
+        if raw.startswith("S4:"):
+            try:
+                b32_str    = raw[3:]
+                pad        = (8 - len(b32_str) % 8) % 8
+                compressed = base64.b32decode(b32_str + "=" * pad)
+                data       = json.loads(zlib.decompress(compressed).decode("utf-8"))
+                return {
+                    "sig_id":         _expand_uuid(data["s"]),
+                    "com_id":         _expand_uuid(data["c"]),
+                    "agent_id":       _expand_uuid(data["a"]),
+                    "key_fp":         data.get("k", ""),
+                    "encrypted_hash": data.get("h", ""),
+                    "algo":           "RSA-PSS-SHA256",
+                    "ts":             data.get("t", ""),
+                    "v":              "4",
+                    "_raw":           raw,
+                }
+            except Exception as e:
+                logger.warning(f"S4 decompression failed: {e}")
+                return None
+
+        # ── Format v3 — base85 + zlib ──────────────────────────────────────
         if raw.startswith("SHIELD3:"):
             try:
                 compressed = base64.b85decode(raw[8:])
@@ -229,7 +252,6 @@ def _try_decode_qr(img: Image.Image, pyzbar_decode) -> Tuple[Optional[Dict[str, 
             return data
         except json.JSONDecodeError:
             return None
-
     try:
         decoded_objects = pyzbar_decode(img)
         logger.debug(f"pyzbar scan returned {len(decoded_objects)} object(s)")

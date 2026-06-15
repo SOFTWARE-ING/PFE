@@ -1,104 +1,74 @@
 // src/screens/HomeScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, FlatList, TextInput, TouchableOpacity,
+  View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, RefreshControl, StatusBar,
   SafeAreaView,
 } from 'react-native';
-import { getCommuniques } from '../api/apiClient';
+import { getRecentCommuniques } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../theme/colors';
 
-// ─── Filtre chips ─────────────────────────────────────────────────────
-const FILTERS = ['Tous', 'Récents', 'Validés', 'Alertes'];
-
-// ─── Icône document (Unicode) ─────────────────────────────────────────
 const DocIcon = () => (
   <View style={styles.commIconBox}>
     <Text style={styles.commIconText}>📄</Text>
   </View>
 );
 
-// ─── Badge Signature valide ───────────────────────────────────────────
-const ValidBadge = () => (
-  <View style={styles.validBadge}>
-    <Text style={styles.validBadgeText}>✓  Signature valide</Text>
-  </View>
-);
-
-// ─── Carte communiqué ────────────────────────────────────────────────
 function CommuniqueCard({ item, onPress }) {
   const date = item.date_publication
     ? new Date(item.date_publication).toLocaleDateString('fr-FR', {
         day: '2-digit', month: 'short', year: 'numeric',
       })
     : '—';
-  const institution = item.institution || 'Institution';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <DocIcon />
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.titre || 'Sans titre'}</Text>
-        <Text style={styles.cardMeta}>{institution} · {date}</Text>
-        <ValidBadge />
+        <Text style={styles.cardMeta}>
+          {date}{item.nb_signatures ? ` · ${item.nb_signatures} signature(s)` : ''}
+        </Text>
+        <View style={styles.validBadge}>
+          <Text style={styles.validBadgeText}>
+            {item.statut === 'PUBLIE' ? '✓  Publié' : item.statut}
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
 }
 
-// ─── Écran principal ──────────────────────────────────────────────────
 export default function HomeScreen({ navigation }) {
-  const { user }                        = useAuth();
-  const [communiques, setCommuniques]   = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [refreshing, setRefreshing]     = useState(false);
-  const [search, setSearch]             = useState('');
-  const [activeFilter, setActiveFilter] = useState('Tous');
-  const [page, setPage]                 = useState(1);
-  const [hasMore, setHasMore]           = useState(true);
+  const { user }                      = useAuth();
+  const [communiques, setCommuniques] = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [refreshing, setRefreshing]   = useState(false);
 
-  const fetchCommuniques = useCallback(async (reset = false) => {
+  const fetchCommuniques = useCallback(async () => {
     try {
-      const currentPage = reset ? 1 : page;
-      const data = await getCommuniques(currentPage, 10);
-      const list = data.communiques || data.data || [];
-
-      if (reset) {
-        setCommuniques(list);
-        setPage(2);
-      } else {
-        setCommuniques(prev => [...prev, ...list]);
-        setPage(prev => prev + 1);
-      }
-      setHasMore(list.length === 10);
+      const data = await getRecentCommuniques(30);
+      setCommuniques(data.results || []);
     } catch {
-      // silently fail for now; could show toast
+      // silencieux pour l'instant — pourrait afficher un toast
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [page]);
+  }, []);
 
-  useEffect(() => { fetchCommuniques(true); }, []);
+  useEffect(() => { fetchCommuniques(); }, [fetchCommuniques]);
 
-  const onRefresh = () => { setRefreshing(true); fetchCommuniques(true); };
+  const onRefresh = () => { setRefreshing(true); fetchCommuniques(); };
 
-  const filtered = communiques.filter(c =>
-    c.titre?.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  // Initiales utilisateur
-  const initials = user?.name
-    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'U';
-  const firstName = user?.name?.split(' ')[0] || 'Utilisateur';
+  const initials = (user?.prenom?.[0] || user?.name?.[0] || 'U').toUpperCase();
+  const firstName = user?.prenom || user?.name?.split(' ')[0] || 'Utilisateur';
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
 
-      {/* ── En-tête ── */}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Bonjour,</Text>
@@ -109,53 +79,29 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
-      {/* ── Barre de recherche ── */}
-      <View style={styles.searchBar}>
+      <TouchableOpacity
+        style={styles.searchBar}
+        onPress={() => navigation.getParent()?.navigate('Search')}
+        activeOpacity={0.8}
+      >
         <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Rechercher un communiqué..."
-          placeholderTextColor={COLORS.accentDim}
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Text style={styles.clearBtn}>✕</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+        <Text style={styles.searchPlaceholder}>Rechercher un communiqué...</Text>
+      </TouchableOpacity>
 
-      {/* ── Filtres chips ── */}
-      <View style={styles.filterRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.chip, activeFilter === f && styles.chipActive]}
-            onPress={() => setActiveFilter(f)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.chipText, activeFilter === f && styles.chipTextActive]}>
-              {f}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={styles.sectionTitle}>Communiqués récents</Text>
 
-      {/* ── Liste ── */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.accentLight} />
         </View>
       ) : (
         <FlatList
-          data={filtered}
-          keyExtractor={item => String(item.id_communique || item.id)}
+          data={communiques}
+          keyExtractor={item => String(item.id_communique)}
           renderItem={({ item }) => (
             <CommuniqueCard
               item={item}
-              onPress={() => navigation.navigate('Detail', { id: item.id_communique || item.id })}
+              onPress={() => navigation.navigate('Detail', { id: item.id_communique })}
             />
           )}
           refreshControl={
@@ -166,17 +112,10 @@ export default function HomeScreen({ navigation }) {
               tintColor={COLORS.accentLight}
             />
           }
-          onEndReached={() => { if (hasMore && !search) fetchCommuniques(); }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            hasMore && !search
-              ? <ActivityIndicator color={COLORS.accentLight} style={{ margin: 16 }} />
-              : null
-          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>📭</Text>
-              <Text style={styles.emptyText}>Aucun communiqué trouvé</Text>
+              <Text style={styles.emptyText}>Aucun communiqué publié</Text>
             </View>
           }
           contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 14, paddingTop: 8 }}
@@ -187,10 +126,9 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea:  { flex: 1, backgroundColor: COLORS.bgDeep },
-  centered:  { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  safeArea: { flex: 1, backgroundColor: COLORS.bgDeep },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // ── Header ────────────────────────────────────────────────────
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
@@ -204,31 +142,21 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
-  // ── Search ────────────────────────────────────────────────────
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: COLORS.bgCard,
     marginHorizontal: 14, marginBottom: 10,
-    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
   },
-  searchIcon:  { fontSize: 15, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 13, color: COLORS.textWhite, height: 34 },
-  clearBtn:    { fontSize: 14, color: COLORS.accentMuted, paddingLeft: 8 },
+  searchIcon: { fontSize: 15, marginRight: 8 },
+  searchPlaceholder: { fontSize: 13, color: COLORS.accentDim },
 
-  // ── Filters ───────────────────────────────────────────────────
-  filterRow: {
-    flexDirection: 'row', paddingHorizontal: 14,
-    gap: 8, marginBottom: 10,
+  sectionTitle: {
+    color: COLORS.accentMuted, fontSize: 11, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+    paddingHorizontal: 14, marginBottom: 8,
   },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 5,
-    borderRadius: 20, backgroundColor: COLORS.bgCard,
-  },
-  chipActive:     { backgroundColor: COLORS.accent },
-  chipText:       { fontSize: 12, color: COLORS.accentMuted },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
 
-  // ── Cards ─────────────────────────────────────────────────────
   card: {
     backgroundColor: COLORS.bgCard,
     borderRadius: 12, padding: 12, marginBottom: 10,
@@ -254,7 +182,6 @@ const styles = StyleSheet.create({
   },
   validBadgeText: { color: COLORS.validText, fontSize: 10, fontWeight: '600' },
 
-  // ── Empty ─────────────────────────────────────────────────────
   empty:     { alignItems: 'center', paddingTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 15, color: COLORS.accentMuted },

@@ -145,18 +145,18 @@ def sign_document(
         return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
     payload = {
-        "v": "3",
+        "v": "4",
         "s": _compress_uuid(result.signature_id),
         "c": _compress_uuid(communique_id),
         "a": _compress_uuid(user_id),
         "k": key_fingerprint,
         "h": sig.valeur_signature if sig else "",
-        "t": datetime.utcnow().strftime("%Y-%m-%dT%H:%M"),
     }
 
     json_str   = json.dumps(payload, separators=(",", ":"))
     compressed = zlib.compress(json_str.encode("utf-8"), level=9)
-    qr_data    = "SHIELD3:" + base64.b85encode(compressed).decode("ascii")
+    # Base32 (A-Z, 2-7) → 100% compatible avec le mode alphanumérique du QR
+    qr_data    = "S4:" + base64.b32encode(compressed).decode("ascii").rstrip("=")
 
     if sig:
         sig.metadata_qr = qr_data
@@ -165,7 +165,7 @@ def sign_document(
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=12,
+        box_size=16,
         border=4,
     )
     qr.add_data(qr_data)
@@ -223,7 +223,7 @@ async def finalize_document(
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=12,
+        box_size=16,
         border=4,
     )
     qr.add_data(sig.metadata_qr)

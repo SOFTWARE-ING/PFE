@@ -1,81 +1,96 @@
 // src/screens/ScanScreen.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Alert, StatusBar, SafeAreaView, Animated, Easing,
+  View, Text, StyleSheet, TouchableOpacity,
+  Alert, StatusBar, SafeAreaView, ActivityIndicator,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { verifyByQRCode } from '../api/apiClient';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { verifyDocument } from '../api/apiClient';
 import { COLORS } from '../theme/colors';
+
+const FRAME_SIZE = 240;
 
 export default function ScanScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned]           = useState(false);
-  const [manualCode, setManualCode]     = useState('');
-  const [loading, setLoading]           = useState(false);
+  const [loading, setLoading] = useState(false);
+  const cameraRef = useRef(null);
 
-  // Animation ligne de scan
-  const scanAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanAnim, {
-          toValue: 1, duration: 1800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanAnim, {
-          toValue: 0, duration: 1800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-
-  const scanLineTranslate = scanAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-50, 50],
-  });
-
-  const handleBarcodeScanned = async ({ data }) => {
-    if (scanned || loading) return;
-    setScanned(true);
+  const runVerification = async (file) => {
     setLoading(true);
     try {
-      const result = await verifyByQRCode(data);
-      navigation.navigate('Verify', { result, qrData: data });
-    } catch {
+      const result = await verifyDocument(file);
+      navigation.navigate('Verify', { result });
+    } catch (error) {
+      const detail = error.response?.data?.detail;
       Alert.alert(
-        'Erreur de vérification',
-        'Impossible de vérifier ce QR code. Vérifiez votre connexion.',
-        [{ text: 'Réessayer', onPress: () => setScanned(false) }],
+        'Vérification impossible',
+        typeof detail === 'string'
+          ? detail
+          : "Une erreur est survenue pendant la vérification. Vérifiez votre connexion au serveur.",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleManualVerify = async () => {
-    if (!manualCode.trim()) {
-      Alert.alert('Code requis', 'Veuillez saisir un code de vérification.');
-      return;
-    }
-    setLoading(true);
+  const handleCapture = async () => {
+    if (!cameraRef.current || loading) return;
     try {
-      const result = await verifyByQRCode(manualCode.trim());
-      navigation.navigate('Verify', { result, qrData: manualCode.trim() });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      await runVerification({
+        uri: photo.uri,
+        name: 'document.jpg',
+        type: 'image/jpeg',
+      });
     } catch {
-      Alert.alert('Erreur', 'Code invalide ou serveur inaccessible.');
-    } finally {
-      setLoading(false);
+      Alert.alert('Erreur', "Impossible de capturer la photo.");
     }
   };
 
-  // ── Permission refusée ────────────────────────────────────────────
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    await runVerification({
+      uri: asset.uri,
+      name: asset.fileName || 'document.jpg',
+      type: asset.mimeType || 'image/jpeg',
+    });
+  };
+
+  const handlePickDocument = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['application/pdf', 'image/*'],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    await runVerification({
+      uri: asset.uri,
+      name: asset.name || 'document.pdf',
+      type: asset.mimeType || 'application/pdf',
+    });
+  };
+
+  // ── Vérification en cours ──────────────────────────────────────────
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.accentLight} />
+          <Text style={styles.loadingText}>Vérification en cours…</Text>
+          <Text style={styles.loadingSub}>Analyse cryptographique et OCR du document</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!permission) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -86,156 +101,105 @@ export default function ScanScreen({ navigation }) {
     );
   }
 
+  // ── Permission caméra refusée → on garde quand même les boutons fichier ──
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Scanner un QR code</Text>
+          <Text style={styles.headerTitle}>Vérifier un document</Text>
         </View>
         <View style={styles.centered}>
           <Text style={styles.permIcon}>📷</Text>
           <Text style={styles.permTitle}>Accès à la caméra requis</Text>
           <Text style={styles.permText}>
-            Pour scanner des QR codes, autorisez l'accès à la caméra.
+            Autorisez la caméra pour photographier un document à vérifier,
+            ou choisissez un fichier ci-dessous.
           </Text>
           <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
             <Text style={styles.permBtnText}>Autoriser la caméra</Text>
           </TouchableOpacity>
         </View>
-        <ManualInput
-          manualCode={manualCode}
-          setManualCode={setManualCode}
-          onVerify={handleManualVerify}
-          loading={loading}
-        />
+        <PickButtons onPickImage={handlePickImage} onPickDocument={handlePickDocument} />
       </SafeAreaView>
     );
   }
 
+  // ── Écran principal : caméra + boutons ───────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
 
-      {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Scanner un QR code</Text>
-        <View style={{ width: 32 }} />
+        <Text style={styles.headerTitle}>Vérifier un document</Text>
       </View>
 
-      {/* ── Caméra ── */}
       <View style={styles.cameraContainer}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-        />
-
-        {/* Overlay sombre autour du cadre */}
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
         <View style={styles.overlay}>
-          {/* Cadre de scan */}
           <View style={styles.scanFrame}>
-            {/* Coins */}
             <View style={[styles.corner, styles.cornerTL]} />
             <View style={[styles.corner, styles.cornerTR]} />
             <View style={[styles.corner, styles.cornerBL]} />
             <View style={[styles.corner, styles.cornerBR]} />
-
-            {/* Ligne de scan animée */}
-            <Animated.View
-              style={[
-                styles.scanLine,
-                { transform: [{ translateY: scanLineTranslate }] },
-              ]}
-            />
           </View>
           <Text style={styles.hint}>
-            Positionnez le QR code du communiqué dans le cadre
+            Cadrez l'intégralité du document, y compris le QR code SHIELD
           </Text>
-          {scanned && (
-            <TouchableOpacity
-              style={styles.rescanBtn}
-              onPress={() => setScanned(false)}
-            >
-              <Text style={styles.rescanText}>Rescanner</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
-      {/* ── Saisie manuelle ── */}
-      <ManualInput
-        manualCode={manualCode}
-        setManualCode={setManualCode}
-        onVerify={handleManualVerify}
-        loading={loading}
-      />
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={styles.captureBtn} onPress={handleCapture} activeOpacity={0.85}>
+          <Text style={styles.captureBtnText}>📸  Capturer et vérifier</Text>
+        </TouchableOpacity>
+      </View>
+
+      <PickButtons onPickImage={handlePickImage} onPickDocument={handlePickDocument} />
     </SafeAreaView>
   );
 }
 
-// ─── Composant saisie manuelle ────────────────────────────────────────
-function ManualInput({ manualCode, setManualCode, onVerify, loading }) {
+// ─── Boutons "choisir un fichier existant" ────────────────────────────
+function PickButtons({ onPickImage, onPickDocument }) {
   return (
-    <View style={styles.manualSection}>
-      <Text style={styles.manualLabel}>Ou entrez le code manuellement</Text>
-      <View style={styles.manualRow}>
-        <TextInput
-          style={styles.manualInput}
-          placeholder="Code de vérification"
-          placeholderTextColor={COLORS.accentDim}
-          value={manualCode}
-          onChangeText={setManualCode}
-          autoCapitalize="none"
-          returnKeyType="done"
-          onSubmitEditing={onVerify}
-        />
-        <TouchableOpacity
-          style={[styles.verifyBtn, loading && styles.disabled]}
-          onPress={onVerify}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.verifyBtnText}>{loading ? '...' : 'Vérifier'}</Text>
+    <View style={styles.pickSection}>
+      <Text style={styles.pickLabel}>Ou choisissez un fichier existant</Text>
+      <View style={styles.pickRow}>
+        <TouchableOpacity style={styles.pickBtn} onPress={onPickImage} activeOpacity={0.85}>
+          <Text style={styles.pickBtnText}>🖼️  Galerie</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.pickBtn} onPress={onPickDocument} activeOpacity={0.85}>
+          <Text style={styles.pickBtnText}>📄  Fichier / PDF</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const FRAME_SIZE = 220;
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#111' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
 
-  // ── Header ────────────────────────────────────────────────────
+  loadingText: { color: COLORS.textWhite, fontSize: 15, fontWeight: '600', marginTop: 16 },
+  loadingSub:  { color: COLORS.accentMuted, fontSize: 12, marginTop: 6, textAlign: 'center' },
+
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: COLORS.bgDeep,
-    paddingHorizontal: 16, paddingVertical: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
   },
-  backBtn:     { width: 32, height: 32, justifyContent: 'center' },
-  backIcon:    { color: COLORS.accentMuted, fontSize: 28, lineHeight: 30 },
   headerTitle: { color: COLORS.textWhite, fontSize: 16, fontWeight: '600' },
 
-  // ── Camera ────────────────────────────────────────────────────
   cameraContainer: { flex: 1, position: 'relative' },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center', alignItems: 'center',
   },
   scanFrame: {
-    width: FRAME_SIZE, height: FRAME_SIZE,
+    width: FRAME_SIZE, height: FRAME_SIZE * 1.3,
     justifyContent: 'center', alignItems: 'center',
     position: 'relative',
-    overflow: 'hidden',
   },
-
-  // Coins du cadre
   corner: {
     position: 'absolute', width: 24, height: 24,
     borderColor: COLORS.accentLight, borderStyle: 'solid',
@@ -245,48 +209,37 @@ const styles = StyleSheet.create({
   cornerBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 },
   cornerBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3 },
 
-  scanLine: {
-    position: 'absolute', left: 6, right: 6, height: 2,
-    backgroundColor: COLORS.accentLight,
-    opacity: 0.9, borderRadius: 1,
-  },
   hint: {
     color: COLORS.accentMuted, fontSize: 12, textAlign: 'center',
     marginTop: 20, paddingHorizontal: 40, lineHeight: 18,
   },
-  rescanBtn: {
-    marginTop: 16, backgroundColor: COLORS.accent,
-    paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20,
-  },
-  rescanText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
-  // ── Permission ────────────────────────────────────────────────
-  permIcon:    { fontSize: 48, marginBottom: 14 },
-  permTitle:   { color: COLORS.textWhite, fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  permText:    { color: COLORS.accentMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  actionsRow: { backgroundColor: COLORS.bgMid, paddingHorizontal: 16, paddingTop: 12 },
+  captureBtn: {
+    backgroundColor: COLORS.accent, borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  captureBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  permIcon:  { fontSize: 48, marginBottom: 14 },
+  permTitle: { color: COLORS.textWhite, fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  permText:  { color: COLORS.accentMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   permBtn: {
     marginTop: 20, backgroundColor: COLORS.accent,
     paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12,
   },
   permBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
-  // ── Manual input ──────────────────────────────────────────────
-  manualSection: {
+  pickSection: {
     backgroundColor: COLORS.bgMid,
     paddingHorizontal: 16, paddingVertical: 12,
   },
-  manualLabel: { color: COLORS.accentMuted, fontSize: 11, marginBottom: 8 },
-  manualRow:   { flexDirection: 'row', gap: 8 },
-  manualInput: {
+  pickLabel: { color: COLORS.accentMuted, fontSize: 11, marginBottom: 8 },
+  pickRow:   { flexDirection: 'row', gap: 10 },
+  pickBtn: {
     flex: 1, backgroundColor: COLORS.bgCard,
     borderWidth: 1, borderColor: COLORS.borderInput,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
-    color: COLORS.textWhite, fontSize: 13,
+    borderRadius: 10, paddingVertical: 12, alignItems: 'center',
   },
-  verifyBtn: {
-    backgroundColor: COLORS.accent, borderRadius: 10,
-    paddingHorizontal: 16, justifyContent: 'center',
-  },
-  verifyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  disabled:      { opacity: 0.5 },
+  pickBtnText: { color: COLORS.textWhite, fontSize: 13, fontWeight: '600' },
 });

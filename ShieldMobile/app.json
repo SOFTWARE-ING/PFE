@@ -22,6 +22,7 @@
         "backgroundColor": "#f0f4ff"
       },
       "package": "com.shield.mobile",
+      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"

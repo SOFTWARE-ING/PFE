@@ -1,41 +1,54 @@
 // src/theme/colors.js
+// Palette exacte du web app SHIELD (army green + white)
 export const COLORS = {
   // Fonds
-  bgDeep:        '#0A1628',   // fond principal sombre
-  bgMid:         '#0D1E38',   // nav bar / surfaces secondaires
-  bgCard:        '#1A3354',   // cartes sur fond sombre
-  bgLight:       '#F1F5FB',   // cartes sur fond clair
-  bgWhite:       '#FFFFFF',
+  bgPage:        '#f2f7ec',   // army-50 — fond général
+  bgCard:        '#FFFFFF',   // cartes blanches
+  bgCardAlt:     '#e0ecd1',   // army-100 — cartes alternatives
+  bgDeep:        '#243310',   // army-900 — header sombre
+  bgMid:         '#2e4415',   // army-800 — tab bar
+  bgInput:       '#FFFFFF',
 
-  // Accents bleus
-  accent:        '#1E5FAA',   // boutons, icônes actives
-  accentLight:   '#4A8FD5',   // éléments UI secondaires
-  accentMuted:   '#8BADD0',   // textes secondaires sur fond sombre
-  accentDim:     '#4A6A8A',   // icônes inactives
+  // Army green (couleur principale)
+  primary:       '#4a7223',   // army-600
+  primaryHover:  '#3a581b',   // army-700
+  primaryLight:  '#5d8f2e',   // army-500
+  primaryMuted:  '#9fc472',   // army-300
+  primaryBorder: '#c3dba5',   // army-200
+  primaryPale:   '#f2f7ec',   // army-50
 
-  // Vert validation
-  validBg:       '#0B3B2A',
-  validText:     '#2AD896',
-  validLight:    '#E7F8F0',
-  validDark:     '#1A7A4D',
+  // Emerald — valide / succès
+  validBg:       '#d1fae5',
+  validBorder:   '#6ee7b7',
+  validText:     '#065f46',
+  validIcon:     '#10b981',
 
-  // Rouge alerte
-  alertBg:       '#FEECEC',
-  alertText:     '#C42B2B',
+  // Rouge — erreur / invalide
+  alertBg:       '#fee2e2',
+  alertBorder:   '#fca5a5',
+  alertText:     '#991b1b',
+  alertIcon:     '#ef4444',
 
-  // Orange warning
-  warnBg:        '#FFF3E0',
-  warnText:      '#C47B00',
+  // Amber — avertissement
+  warnBg:        '#fef3c7',
+  warnBorder:    '#fcd34d',
+  warnText:      '#92400e',
+  warnIcon:      '#f59e0b',
 
   // Textes
+  textPrimary:   '#243310',   // army-900
+  textSecondary: '#4a7223',   // army-600
+  textMuted:     '#7aab44',   // army-400
+  textDim:       '#9fc472',   // army-300
   textWhite:     '#FFFFFF',
-  textPrimary:   '#0A1628',
-  textSecondary: '#6B7A8D',
-  textMuted:     '#8BADD0',
-  textDim:       '#B0B8C4',
+  textOnDark:    '#e0ecd1',   // army-100
 
   // Bordures
-  border:        '#1A3354',
-  borderLight:   '#E8ECF0',
-  borderInput:   '#2A4A6A',
+  border:        '#c3dba5',   // army-200
+  borderStrong:  '#4a7223',   // army-600
+  borderLight:   '#e0ecd1',   // army-100
+
+  // Tab bar
+  tabActive:     '#9fc472',   // army-300
+  tabInactive:   '#5d8f2e',   // army-500
 };

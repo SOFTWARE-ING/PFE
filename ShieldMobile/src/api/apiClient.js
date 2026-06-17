@@ -64,3 +64,4 @@ export const verifyDocument = async (file) => {
 };
 
 export default apiClient;
+export { getApiBaseUrl } from '../config/serverConfig';

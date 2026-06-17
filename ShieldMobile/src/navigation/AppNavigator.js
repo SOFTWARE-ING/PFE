@@ -3,7 +3,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import HomeScreen          from '../screens/HomeScreen';
 import DetailScreen        from '../screens/DetailScreen';
@@ -13,20 +13,13 @@ import SearchScreen        from '../screens/SearchScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SettingsScreen      from '../screens/SettingsScreen';
 import { COLORS } from '../theme/colors';
+import {
+  IconHome, IconSearch, IconCamera, IconBell, IconSettings,
+} from '../components/Icon';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// ─── Icônes tab bar ───────────────────────────────────────────────────
-const TAB_ICONS = {
-  Home:          { emoji: '🏠', label: 'Accueil' },
-  Search:        { emoji: '🔍', label: 'Recherche' },
-  Scanner:       { emoji: '📷', label: 'Vérifier' },
-  Notifications: { emoji: '🔔', label: 'Alertes' },
-  Settings:      { emoji: '⚙️', label: 'Paramètres' },
-};
-
-// ─── Stack : Accueil → Détail ─────────────────────────────────────────
 function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -36,7 +29,6 @@ function HomeStack() {
   );
 }
 
-// ─── Stack : Recherche → Détail ───────────────────────────────────────
 function SearchStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -46,7 +38,6 @@ function SearchStack() {
   );
 }
 
-// ─── Stack : Scanner/Upload → Résultat ─────────────────────────────────
 function ScanStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -56,48 +47,98 @@ function ScanStack() {
   );
 }
 
-// ─── Onglets principaux ───────────────────────────────────────────────
-function MainTabs() {
+function TabIcon({ Icon, focused }) {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor:   COLORS.accentLight,
-        tabBarInactiveTintColor: COLORS.accentDim,
-        tabBarStyle: {
-          backgroundColor: COLORS.bgMid,
-          borderTopWidth: 0.5,
-          borderTopColor: COLORS.border,
-          paddingBottom: 8,
-          paddingTop: 6,
-          height: 62,
-        },
-        tabBarLabel: ({ color }) => (
-          <Text style={{ color, fontSize: 10, marginBottom: 2 }}>
-            {TAB_ICONS[route.name]?.label || route.name}
-          </Text>
-        ),
-        tabBarIcon: ({ color, focused }) => (
-          <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.7 }}>
-            {TAB_ICONS[route.name]?.emoji || '•'}
-          </Text>
-        ),
-      })}
-    >
-      <Tab.Screen name="Home"          component={HomeStack} />
-      <Tab.Screen name="Search"        component={SearchStack} />
-      <Tab.Screen name="Scanner"       component={ScanStack} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} />
-      <Tab.Screen name="Settings"      component={SettingsScreen} />
-    </Tab.Navigator>
+    <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
+      <Icon size={22} color={focused ? COLORS.primary : COLORS.tabInactive} />
+    </View>
   );
 }
 
-// ─── Routeur principal (pas d'authentification pour cette v1) ──────────
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <MainTabs />
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: COLORS.bgCard,
+            borderTopWidth: 1,
+            borderTopColor: COLORS.border,
+            height: 64,
+            paddingBottom: 8,
+            paddingTop: 6,
+          },
+          tabBarActiveTintColor:   COLORS.primary,
+          tabBarInactiveTintColor: COLORS.tabInactive,
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 0 },
+        }}
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeStack}
+          options={{
+            tabBarLabel: 'Accueil',
+            tabBarIcon: ({ focused }) => <TabIcon Icon={IconHome} focused={focused} />,
+          }}
+        />
+        <Tab.Screen
+          name="Search"
+          component={SearchStack}
+          options={{
+            tabBarLabel: 'Recherche',
+            tabBarIcon: ({ focused }) => <TabIcon Icon={IconSearch} focused={focused} />,
+          }}
+        />
+        <Tab.Screen
+          name="Scanner"
+          component={ScanStack}
+          options={{
+            tabBarLabel: 'Vérifier',
+            tabBarIcon: ({ focused }) => (
+              <View style={styles.scanTabBtn}>
+                <IconCamera size={26} color="#fff" />
+              </View>
+            ),
+            tabBarLabelStyle: { fontSize: 10, fontWeight: '700', color: COLORS.primary },
+          }}
+        />
+        <Tab.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{
+            tabBarLabel: 'Alertes',
+            tabBarIcon: ({ focused }) => <TabIcon Icon={IconBell} focused={focused} />,
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            tabBarLabel: 'Paramètres',
+            tabBarIcon: ({ focused }) => <TabIcon Icon={IconSettings} focused={focused} />,
+          }}
+        />
+      </Tab.Navigator>
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  tabIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  tabIconActive: {
+    backgroundColor: COLORS.primaryPale,
+  },
+  scanTabBtn: {
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 6,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+});

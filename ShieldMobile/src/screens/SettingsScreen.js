@@ -26,8 +26,10 @@ export default function SettingsScreen() {
   const normalize = (value) => {
     let v = value.trim();
     if (!v) return '';
-    if (!/^https?:\/\//i.test(v)) v = `http://${v}`;
-    return v.replace(/\/+$/, '');
+    // Retire tout schéma existant puis force http://
+    v = v.replace(/^https?:\/\//i, '');
+    v = v.replace(/\/+$/, '');
+    return `http://${v}`;
   };
 
   const handleSave = async () => {

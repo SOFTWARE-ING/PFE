@@ -3,13 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'shield_server_url';
 
-// 🔧 Valeur par défaut utilisée si rien n'a encore été configuré.
-// L'utilisateur peut la changer dans l'écran "Paramètres".
-export const DEFAULT_SERVER_URL = 'http://192.168.1.100:8000';
+// Toujours HTTP — communication locale uniquement
+export const DEFAULT_SERVER_URL = 'http://192.168.1.145:8000';
 
 let cachedServerUrl = null;
 
-// Retourne l'URL de base du serveur (sans /api), ex: http://192.168.1.42:8000
 export const getServerUrl = async () => {
   if (cachedServerUrl) return cachedServerUrl;
   try {
@@ -21,26 +19,50 @@ export const getServerUrl = async () => {
   return cachedServerUrl;
 };
 
-// Enregistre une nouvelle adresse de serveur (appelé depuis l'écran Paramètres)
 export const setServerUrl = async (url) => {
-  const cleaned = url.trim().replace(/\/+$/, '');
+  const cleaned = normalizeUrl(url);
   await AsyncStorage.setItem(STORAGE_KEY, cleaned);
   cachedServerUrl = cleaned;
   return cleaned;
 };
 
-// Retourne l'URL de base de l'API (avec /api), ex: http://192.168.1.42:8000/api
 export const getApiBaseUrl = async () => {
   const base = await getServerUrl();
   return `${base}/api`;
 };
 
-// Teste la connexion au serveur en appelant sa route racine "/"
+// Force toujours http:// peu importe ce que l'utilisateur tape
+const normalizeUrl = (value) => {
+  let v = value.trim();
+  if (!v) return DEFAULT_SERVER_URL;
+  // Retire tout schéma existant (http:// ou https://)
+  v = v.replace(/^https?:\/\//i, '');
+  // Retire les slashes finaux
+  v = v.replace(/\/+$/, '');
+  // Force http://
+  return `http://${v}`;
+};
+
 export const testServerConnection = async (url) => {
-  const cleaned = url.trim().replace(/\/+$/, '');
-  const response = await fetch(`${cleaned}/`, { method: 'GET' });
-  if (!response.ok) {
-    throw new Error(`Le serveur a répondu avec le code ${response.status}`);
+  const cleaned = normalizeUrl(url);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`${cleaned}/api/search/recent?limit=1`, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' },
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok && response.status !== 422) {
+      throw new Error(`Serveur a répondu: ${response.status}`);
+    }
+    return true;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Délai dépassé — serveur trop lent ou inaccessible');
+    }
+    throw error;
   }
-  return await response.json();
 };

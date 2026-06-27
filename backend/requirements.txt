@@ -87,3 +87,4 @@ uvloop==0.22.1
 watchfiles==1.1.1
 websockets==16.0
 pyzbar>=0.1.9
+opencv-python-headless>=4.8.0

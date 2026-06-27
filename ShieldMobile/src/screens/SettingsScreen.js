@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { getServerUrl, setServerUrl, testServerConnection, DEFAULT_SERVER_URL } from '../config/serverConfig';
 import { COLORS } from '../theme/colors';
-import { IconShield, IconWifi, IconCheckCircle, IconXCircle } from '../components/Icon';
+import { IconShield, IconWifi, IconCheckCircleFill, IconXCircleFill, IconRefresh } from '../components/Icon';
 
 export default function SettingsScreen() {
   const [address, setAddress] = useState('');
@@ -16,75 +16,62 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     (async () => {
-      const current = await getServerUrl();
-      setAddress(current.replace(/^https?:\/\//i, ''));
-      setSaved(current);
+      const cur = await getServerUrl();
+      setAddress(cur.replace(/^https?:\/\//i, ''));
+      setSaved(cur);
     })();
   }, []);
 
-  const normalize = (value) => {
-    let v = value.trim();
-    if (!v) return '';
-    v = v.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-    return `http://${v}`;
+  const normalize = (v) => {
+    let s = v.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    return s ? `http://${s}` : '';
   };
 
   const handleSave = async () => {
-    const normalized = normalize(address);
-    if (!normalized || normalized === 'http://') {
-      Alert.alert('Adresse invalide', "Veuillez saisir l'adresse du serveur.");
-      return;
-    }
-    await setServerUrl(normalized);
-    setSaved(normalized);
-    setStatus(null);
-    Alert.alert('✓ Enregistré', "L'adresse du serveur a été mise à jour.");
+    const url = normalize(address);
+    if (!url) { Alert.alert('Adresse invalide', 'Saisissez une adresse IP valide.'); return; }
+    await setServerUrl(url);
+    setSaved(url); setStatus(null);
+    Alert.alert('✓ Enregistré', 'Adresse du serveur mise à jour.');
   };
 
   const handleTest = async () => {
-    const normalized = normalize(address);
-    if (!normalized || normalized === 'http://') {
-      Alert.alert('Adresse invalide', "Veuillez saisir l'adresse du serveur.");
-      return;
-    }
+    const url = normalize(address);
+    if (!url) { Alert.alert('Adresse invalide', 'Saisissez une adresse IP valide.'); return; }
     setTesting(true); setStatus(null);
-    try {
-      await testServerConnection(normalized);
-      setStatus('ok');
-    } catch { setStatus('error'); }
+    try { await testServerConnection(url); setStatus('ok'); }
+    catch { setStatus('error'); }
     finally { setTesting(false); }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
-
-      <View style={styles.header}>
-        <View style={styles.logoBox}>
-          <IconShield size={22} color="#fff" />
-        </View>
-        <View>
-          <Text style={styles.headerTitle}>Paramètres</Text>
-          <Text style={styles.headerSub}>Configuration de l'application</Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-
-        {/* Server section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconWifi size={16} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Adresse du serveur SHIELD</Text>
+    <View style={s.container}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgApp} />
+      <SafeAreaView style={{ backgroundColor: COLORS.bgApp }}>
+        <View style={s.header}>
+          <View style={s.logoBox}><IconShield size={20} color="#fff" /></View>
+          <View>
+            <Text style={s.title}>Paramètres</Text>
+            <Text style={s.sub}>Configuration du serveur</Text>
           </View>
-          <Text style={styles.helpText}>
-            Adresse IP locale de la machine hébergeant le backend FastAPI.
-            Votre téléphone et l'ordinateur doivent être sur le même réseau Wi-Fi.
+        </View>
+      </SafeAreaView>
+
+      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
+
+        {/* Server card */}
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <IconWifi size={16} color={COLORS.secondary} />
+            <Text style={s.cardTitle}>Serveur SHIELD</Text>
+          </View>
+          <Text style={s.cardDesc}>
+            Adresse IP locale de la machine hébergeant le backend. Votre téléphone et le PC doivent être sur le même réseau Wi-Fi.
           </Text>
 
-          <Text style={styles.inputLabel}>Adresse IP et port</Text>
+          <Text style={s.inputLabel}>ADRESSE IP ET PORT</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             value={address}
             onChangeText={(t) => { setAddress(t); setStatus(null); }}
             placeholder="192.168.1.100:8000"
@@ -95,128 +82,98 @@ export default function SettingsScreen() {
           />
 
           {status === 'ok' && (
-            <View style={[styles.statusBox, styles.statusOk]}>
-              <IconCheckCircle size={16} color={COLORS.validIcon} />
-              <Text style={styles.statusOkText}>Connexion réussie au serveur SHIELD</Text>
+            <View style={[s.statusBox, s.statusOk]}>
+              <IconCheckCircleFill size={16} color={COLORS.validIcon} />
+              <Text style={s.statusOkText}>Serveur SHIELD joignable</Text>
             </View>
           )}
           {status === 'error' && (
-            <View style={[styles.statusBox, styles.statusError]}>
-              <IconXCircle size={16} color={COLORS.alertIcon} />
-              <Text style={styles.statusErrorText}>
-                Impossible de joindre ce serveur. Vérifiez l'adresse et le réseau.
-              </Text>
+            <View style={[s.statusBox, s.statusErr]}>
+              <IconXCircleFill size={16} color={COLORS.alertIcon} />
+              <Text style={s.statusErrText}>Serveur inaccessible. Vérifiez l'IP et le réseau.</Text>
             </View>
           )}
 
-          <TouchableOpacity style={styles.testBtn} onPress={handleTest} disabled={testing}>
-            {testing
-              ? <ActivityIndicator color={COLORS.primary} size="small" />
-              : <><IconWifi size={15} color={COLORS.primary} /><Text style={styles.testBtnText}>Tester la connexion</Text></>
-            }
-          </TouchableOpacity>
+          <View style={s.btnRow}>
+            <TouchableOpacity style={s.testBtn} onPress={handleTest} disabled={testing}>
+              {testing ? <ActivityIndicator color={COLORS.primary} size="small" /> : <><IconWifi size={14} color={COLORS.primary} /><Text style={s.testBtnText}>Tester</Text></>}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.saveBtn} onPress={handleSave}>
+              <Text style={s.saveBtnText}>Enregistrer</Text>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-            <Text style={styles.saveBtnText}>Enregistrer</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.resetBtn} onPress={() => setAddress(DEFAULT_SERVER_URL.replace(/^https?:\/\//i, ''))}>
-            <Text style={styles.resetBtnText}>Réinitialiser par défaut</Text>
+          <TouchableOpacity onPress={() => setAddress(DEFAULT_SERVER_URL.replace(/^https?:\/\//i, ''))} style={s.resetBtn}>
+            <IconRefresh size={12} color={COLORS.textMuted} />
+            <Text style={s.resetText}>Réinitialiser</Text>
           </TouchableOpacity>
         </View>
 
         {/* Current address */}
-        <View style={styles.currentCard}>
-          <Text style={styles.currentLabel}>ADRESSE ACTIVE</Text>
-          <Text style={styles.currentValue}>{saved || '—'}</Text>
+        <View style={s.card}>
+          <Text style={s.inputLabel}>ADRESSE ACTIVE</Text>
+          <Text style={s.currentVal}>{saved || '—'}</Text>
         </View>
 
         {/* App info */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>CommuniSigne Mobile</Text>
-          <Text style={styles.infoVersion}>Version 1.0.0</Text>
-          <Text style={styles.infoDesc}>
-            Plateforme officielle de vérification de documents gouvernementaux signés numériquement.
+        <View style={s.card}>
+          <View style={s.appInfoRow}>
+            <View style={s.appInfoIcon}><IconShield size={22} color={COLORS.primary} /></View>
+            <View>
+              <Text style={s.appInfoName}>CommuniSigne</Text>
+              <Text style={s.appInfoVer}>Version 1.0.0 — Vérification officielle</Text>
+            </View>
+          </View>
+          <Text style={s.appInfoDesc}>
+            Plateforme officielle de vérification des documents gouvernementaux signés numériquement via RSA-PSS SHA-256.
           </Text>
         </View>
-
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.bgDeep },
+const s = StyleSheet.create({
+  container:   { flex: 1, backgroundColor: COLORS.bgApp },
+  header:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14 },
+  logoBox:     { width: 42, height: 42, borderRadius: 13, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  title:       { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' },
+  sub:         { color: COLORS.textMuted, fontSize: 11, marginTop: 1 },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 16,
-    backgroundColor: COLORS.bgDeep,
-  },
-  logoBox: {
-    width: 44, height: 44, borderRadius: 14,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: COLORS.primary, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6,
-  },
-  headerTitle: { color: COLORS.textWhite, fontSize: 18, fontWeight: '700' },
-  headerSub:   { color: COLORS.tabInactive, fontSize: 12, marginTop: 1 },
+  scroll:       { flex: 1 },
+  scrollContent:{ padding: 16, gap: 14, paddingBottom: 40 },
 
-  body: {
-    flex: 1, backgroundColor: COLORS.bgPage,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-  },
-  bodyContent: { padding: 18, gap: 16, paddingBottom: 32 },
+  card: { backgroundColor: COLORS.bgCard, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: COLORS.border, gap: 12 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardTitle:  { color: COLORS.textPrimary, fontSize: 14, fontWeight: '700' },
+  cardDesc:   { color: COLORS.textMuted, fontSize: 12, lineHeight: 18 },
 
-  section: {
-    backgroundColor: COLORS.bgCard, borderRadius: 16,
-    borderWidth: 1, borderColor: COLORS.border, padding: 16, gap: 10,
-  },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle:  { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
-  helpText:      { fontSize: 12, color: COLORS.textMuted, lineHeight: 18 },
-
-  inputLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  inputLabel: { fontSize: 10, color: COLORS.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
   input: {
-    borderWidth: 1.5, borderColor: COLORS.border,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 14, color: COLORS.textPrimary, backgroundColor: COLORS.bgInput,
+    backgroundColor: COLORS.bgInput, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: COLORS.textPrimary,
   },
 
-  statusBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12, padding: 12 },
-  statusOk:    { backgroundColor: COLORS.validBg, borderWidth: 1, borderColor: COLORS.validBorder },
-  statusError: { backgroundColor: COLORS.alertBg, borderWidth: 1, borderColor: COLORS.alertBorder },
-  statusOkText:    { flex: 1, fontSize: 12, fontWeight: '600', color: COLORS.validText },
-  statusErrorText: { flex: 1, fontSize: 12, fontWeight: '600', color: COLORS.alertText },
+  statusBox: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 10 },
+  statusOk:  { backgroundColor: COLORS.validBg, borderWidth: 1, borderColor: COLORS.validBorder },
+  statusErr: { backgroundColor: COLORS.alertBg, borderWidth: 1, borderColor: COLORS.alertBorder },
+  statusOkText:  { color: COLORS.validText, fontSize: 12, fontWeight: '600', flex: 1 },
+  statusErrText: { color: COLORS.alertText, fontSize: 12, fontWeight: '600', flex: 1 },
 
-  testBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1.5, borderColor: COLORS.primaryBorder, borderRadius: 12,
-    paddingVertical: 12,
-  },
-  testBtnText: { color: COLORS.primary, fontSize: 14, fontWeight: '700' },
+  btnRow:   { flexDirection: 'row', gap: 10 },
+  testBtn:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1.5, borderColor: COLORS.primaryBorder, borderRadius: 12, paddingVertical: 11 },
+  testBtnText: { color: COLORS.primary, fontSize: 13, fontWeight: '700' },
+  saveBtn:  { flex: 1.3, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 11, alignItems: 'center' },
+  saveBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
-  saveBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 12,
-    paddingVertical: 13, alignItems: 'center',
-  },
-  saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  resetBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  resetText: { color: COLORS.textMuted, fontSize: 11, textDecorationLine: 'underline' },
 
-  resetBtn:    { alignItems: 'center', paddingVertical: 4 },
-  resetBtnText:{ color: COLORS.textMuted, fontSize: 12, textDecorationLine: 'underline' },
+  currentVal: { color: COLORS.primary, fontSize: 13, fontWeight: '600' },
 
-  currentCard: {
-    backgroundColor: COLORS.bgCard, borderRadius: 14,
-    borderWidth: 1, borderColor: COLORS.border, padding: 14,
-  },
-  currentLabel: { fontSize: 10, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-  currentValue: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-
-  infoCard: {
-    backgroundColor: COLORS.bgCard, borderRadius: 14,
-    borderWidth: 1, borderColor: COLORS.border, padding: 14, gap: 4,
-  },
-  infoTitle:   { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
-  infoVersion: { fontSize: 11, color: COLORS.textMuted },
-  infoDesc:    { fontSize: 12, color: COLORS.textMuted, lineHeight: 18, marginTop: 4 },
+  appInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  appInfoIcon:{ width: 44, height: 44, borderRadius: 13, backgroundColor: COLORS.primaryPale, justifyContent: 'center', alignItems: 'center' },
+  appInfoName:{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '700' },
+  appInfoVer: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
+  appInfoDesc:{ color: COLORS.textMuted, fontSize: 12, lineHeight: 18 },
 });

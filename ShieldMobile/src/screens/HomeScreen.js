@@ -3,213 +3,290 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, StatusBar, SafeAreaView,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getRecentCommuniques } from '../api/apiClient';
 import { COLORS } from '../theme/colors';
-import { IconShield, IconFile, IconCalendar, IconChevronRight, IconRefresh } from '../components/Icon';
+import { IconShield, IconFile, IconSearch, IconChevronRight, IconRefresh, IconCalendar, IconLightning } from '../components/Icon';
 
-function CommuniqueCard({ item, onPress }) {
+const { width: W } = Dimensions.get('window');
+const CARD_W = (W - 48) / 2;
+
+function StatBadge({ label, value, color }) {
+  return (
+    <View style={[s.statBadge, { borderColor: color + '44' }]}>
+      <Text style={[s.statValue, { color }]}>{value}</Text>
+      <Text style={s.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function DocCard({ item, onPress }) {
   const date = item.date_publication
-    ? new Date(item.date_publication).toLocaleDateString('fr-FR', {
-        day: '2-digit', month: 'short', year: 'numeric',
-      })
+    ? new Date(item.date_publication).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
     : '—';
-
-  const isPublie = item.statut?.toUpperCase() === 'PUBLIE';
+  const hasSig = (item.nb_signatures || 0) > 0;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <View style={styles.cardIconBox}>
+    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.75}>
+      <View style={s.cardIconWrap}>
         <IconFile size={22} color={COLORS.primary} />
       </View>
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={2}>{item.titre || 'Sans titre'}</Text>
-        <View style={styles.cardMeta}>
-          <IconCalendar size={11} color={COLORS.textMuted} />
-          <Text style={styles.cardMetaText}>{date}</Text>
-          <View style={[styles.statusPill, !isPublie && styles.statusPillAlt]}>
-            <Text style={[styles.statusPillText, !isPublie && styles.statusPillTextAlt]}>
-              {isPublie ? 'Publié' : item.statut}
-            </Text>
-          </View>
+      <Text style={s.cardTitle} numberOfLines={2}>{item.titre || 'Sans titre'}</Text>
+      <View style={s.cardFooter}>
+        <Text style={s.cardDate}>{date}</Text>
+        {hasSig && <View style={s.sigDot} />}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function DocRow({ item, onPress }) {
+  const date = item.date_publication
+    ? new Date(item.date_publication).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '—';
+
+  return (
+    <TouchableOpacity style={s.row} onPress={onPress} activeOpacity={0.75}>
+      <View style={s.rowIconBox}>
+        <IconFile size={18} color={COLORS.primary} />
+      </View>
+      <View style={s.rowBody}>
+        <Text style={s.rowTitle} numberOfLines={1}>{item.titre || 'Sans titre'}</Text>
+        <View style={s.rowMeta}>
+          <IconCalendar size={10} color={COLORS.textMuted} />
+          <Text style={s.rowDate}>{date}</Text>
         </View>
       </View>
-      <IconChevronRight size={16} color={COLORS.primaryMuted} />
+      <IconChevronRight size={14} color={COLORS.textDim} />
     </TouchableOpacity>
   );
 }
 
 export default function HomeScreen({ navigation }) {
-  const [communiques, setCommuniques] = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [refreshing, setRefreshing]   = useState(false);
+  const [docs, setDocs]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefresh]= useState(false);
 
-  const fetchCommuniques = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       const data = await getRecentCommuniques(30);
-      setCommuniques(data.results || []);
-    } catch { /* silencieux */ }
-    finally {
+      const results = (data.results || []).filter(d => d.statut === 'PUBLIE');
+      setDocs(results);
+    } catch (e) {
+      console.warn('HomeScreen:', e.message);
+    } finally {
       setLoading(false);
-      setRefreshing(false);
+      setRefresh(false);
     }
   }, []);
 
-  useEffect(() => { fetchCommuniques(); }, [fetchCommuniques]);
+  useEffect(() => { load(); }, [load]);
+
+  const recent = docs.slice(0, 4);
+  const older  = docs.slice(4);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDeep} />
+    <View style={s.container}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgApp} />
+      <SafeAreaView style={{ backgroundColor: COLORS.bgApp }}>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.logoBox}>
-            <IconShield size={22} color="#fff" />
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>CommuniSigne</Text>
-            <Text style={styles.headerSub}>Plateforme officielle</Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={styles.refreshBtn}
-          onPress={() => { setRefreshing(true); fetchCommuniques(); }}
-        >
-          <IconRefresh size={18} color={COLORS.tabActive} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Search shortcut */}
-      <TouchableOpacity
-        style={styles.searchBar}
-        onPress={() => navigation.getParent()?.navigate('Search')}
-        activeOpacity={0.8}
-      >
-        <IconSearch size={16} color={COLORS.textMuted} />
-        <Text style={styles.searchPlaceholder}>Rechercher un communiqué signé...</Text>
-      </TouchableOpacity>
-
-      {/* Section title */}
-      <View style={styles.sectionRow}>
-        <Text style={styles.sectionTitle}>Communiqués récents</Text>
-        {!loading && (
-          <Text style={styles.sectionCount}>{communiques.length} document(s)</Text>
-        )}
-      </View>
-
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Chargement...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={communiques}
-          keyExtractor={item => String(item.id_communique)}
-          renderItem={({ item }) => (
-            <CommuniqueCard
-              item={item}
-              onPress={() => navigation.navigate('Detail', { id: item.id_communique })}
-            />
-          )}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); fetchCommuniques(); }}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-            />
-          }
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <IconFile size={48} color={COLORS.primaryBorder} />
-              <Text style={styles.emptyTitle}>Aucun document</Text>
-              <Text style={styles.emptyText}>Aucun communiqué publié pour l'instant</Text>
+        {/* Header */}
+        <View style={s.header}>
+          <View style={s.headerLeft}>
+            <View style={s.logoBox}>
+              <IconShield size={20} color="#fff" />
             </View>
-          }
-        />
-      )}
-    </SafeAreaView>
+            <View>
+              <Text style={s.appName}>CommuniSigne</Text>
+              <Text style={s.appSub}>Documents officiels</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => { setRefresh(true); load(); }} style={s.refreshBtn}>
+            <IconRefresh size={18} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search shortcut */}
+        <TouchableOpacity
+          style={s.searchBar}
+          onPress={() => navigation.getParent()?.navigate('Search')}
+          activeOpacity={0.85}
+        >
+          <IconSearch size={15} color={COLORS.textMuted} />
+          <Text style={s.searchPlaceholder}>Rechercher un communiqué...</Text>
+          <View style={s.searchKbd}>
+            <Text style={s.searchKbdText}>⌕</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Stats strip */}
+        {!loading && (
+          <View style={s.statsRow}>
+            <StatBadge label="Publiés" value={docs.length} color={COLORS.primary} />
+            <StatBadge label="Signés" value={docs.filter(d => (d.nb_signatures || 0) > 0).length} color={COLORS.validIcon} />
+            <StatBadge label="Récents" value={recent.length} color={COLORS.secondary} />
+          </View>
+        )}
+      </SafeAreaView>
+
+      <FlatList
+        data={older}
+        keyExtractor={item => item.id_communique || String(Math.random())}
+        renderItem={({ item }) => (
+          <DocRow item={item} onPress={() => navigation.navigate('Detail', { id: item.id_communique })} />
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefresh(true); load(); }} tintColor={COLORS.primary} />
+        }
+        contentContainerStyle={s.list}
+        style={{ backgroundColor: COLORS.bgApp }}
+        ListHeaderComponent={
+          loading ? (
+            <View style={s.centered}>
+              <ActivityIndicator color={COLORS.primary} size="large" />
+            </View>
+          ) : (
+            <>
+              {/* Recent docs — 2-column grid */}
+              {recent.length > 0 && (
+                <View style={s.section}>
+                  <View style={s.sectionHeader}>
+                    <IconLightning size={14} color={COLORS.secondary} />
+                    <Text style={s.sectionTitle}>Récents</Text>
+                  </View>
+                  <View style={s.grid}>
+                    {recent.map(item => (
+                      <DocCard
+                        key={item.id_communique}
+                        item={item}
+                        onPress={() => navigation.navigate('Detail', { id: item.id_communique })}
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {older.length > 0 && (
+                <View style={s.sectionHeader2}>
+                  <IconFile size={14} color={COLORS.textMuted} />
+                  <Text style={s.sectionTitle2}>Tous les documents</Text>
+                </View>
+              )}
+            </>
+          )
+        }
+        ListEmptyComponent={
+          !loading && (
+            <View style={s.empty}>
+              <View style={s.emptyIconBox}>
+                <IconFile size={36} color={COLORS.primaryPale} />
+              </View>
+              <Text style={s.emptyTitle}>Aucun document</Text>
+              <Text style={s.emptyText}>Les communiqués officiels apparaîtront ici</Text>
+            </View>
+          )
+        }
+      />
+    </View>
   );
 }
 
-// eslint-disable-next-line no-unused-vars
-function IconSearch({ size, color }) {
-  const { IconSearch: IS } = require('../components/Icon');
-  return <IS size={size} color={color} />;
-}
-
-const styles = StyleSheet.create({
-  safeArea:  { flex: 1, backgroundColor: COLORS.bgDeep },
-  centered:  { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { color: COLORS.textMuted, fontSize: 13 },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.bgApp },
+  centered:  { justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    backgroundColor: COLORS.bgDeep,
+    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14,
   },
-  headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   logoBox: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 40, height: 40, borderRadius: 13,
     backgroundColor: COLORS.primary,
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: COLORS.primary, shadowOpacity: 0.4,
-    shadowRadius: 8, elevation: 6,
   },
-  headerTitle: { color: COLORS.textWhite, fontSize: 16, fontWeight: '700' },
-  headerSub:   { color: COLORS.tabInactive, fontSize: 11, marginTop: 1 },
+  appName: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
+  appSub:  { color: COLORS.textMuted, fontSize: 11, marginTop: 1 },
   refreshBtn: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: '#2e4415',
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: COLORS.primaryPale,
     justifyContent: 'center', alignItems: 'center',
   },
 
   searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#2e4415',
-    marginHorizontal: 16, marginBottom: 12,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
-    borderWidth: 1, borderColor: '#3a581b',
-  },
-  searchPlaceholder: { color: COLORS.tabInactive, fontSize: 13, flex: 1 },
-
-  sectionRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, marginBottom: 6,
-  },
-  sectionTitle: { color: COLORS.textOnDark, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
-  sectionCount: { color: COLORS.tabInactive, fontSize: 11 },
-
-  list: { paddingHorizontal: 14, paddingBottom: 20, paddingTop: 4 },
-
-  card: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: COLORS.bgCard,
-    borderRadius: 14, padding: 14, marginBottom: 10,
+    marginHorizontal: 20, marginBottom: 14,
+    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
     borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  cardIconBox: {
-    width: 44, height: 44, borderRadius: 12,
+  searchPlaceholder: { flex: 1, color: COLORS.textMuted, fontSize: 13 },
+  searchKbd: {
+    paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: COLORS.primaryPale, borderRadius: 6,
+  },
+  searchKbdText: { color: COLORS.primary, fontSize: 14, fontWeight: '600' },
+
+  statsRow: {
+    flexDirection: 'row', gap: 10,
+    paddingHorizontal: 20, paddingBottom: 16,
+  },
+  statBadge: {
+    flex: 1, backgroundColor: COLORS.bgCard,
+    borderRadius: 12, paddingVertical: 10, paddingHorizontal: 8,
+    alignItems: 'center', borderWidth: 1,
+  },
+  statValue: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  statLabel: { fontSize: 10, color: COLORS.textMuted, marginTop: 2, fontWeight: '500' },
+
+  list: { paddingHorizontal: 20, paddingBottom: 24 },
+
+  section: { marginBottom: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  sectionTitle:  { color: COLORS.secondary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  sectionHeader2:{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  sectionTitle2: { color: COLORS.textMuted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  card: {
+    width: CARD_W, backgroundColor: COLORS.bgCard,
+    borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  cardIconWrap: {
+    width: 38, height: 38, borderRadius: 11,
+    backgroundColor: COLORS.primaryPale,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 10,
+  },
+  cardTitle:  { color: COLORS.textPrimary, fontSize: 12, fontWeight: '600', lineHeight: 17, marginBottom: 8 },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardDate:   { color: COLORS.textMuted, fontSize: 10 },
+  sigDot:     { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.validIcon },
+
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.bgCard, borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  rowIconBox: {
+    width: 36, height: 36, borderRadius: 10,
     backgroundColor: COLORS.primaryPale,
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  cardBody:  { flex: 1 },
-  cardTitle: { fontSize: 13, fontWeight: '600', color: COLORS.textPrimary, lineHeight: 18, marginBottom: 6 },
-  cardMeta:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  cardMetaText: { fontSize: 11, color: COLORS.textMuted, flex: 1 },
-  statusPill: {
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20,
-    backgroundColor: COLORS.validBg,
-  },
-  statusPillText:    { fontSize: 10, fontWeight: '700', color: COLORS.validText },
-  statusPillAlt:     { backgroundColor: COLORS.warnBg },
-  statusPillTextAlt: { color: COLORS.warnText },
+  rowBody:  { flex: 1 },
+  rowTitle: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '600', marginBottom: 4 },
+  rowMeta:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rowDate:  { color: COLORS.textMuted, fontSize: 11 },
 
-  empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyTitle: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
-  emptyText:  { fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
+  empty: { alignItems: 'center', paddingTop: 60, gap: 14 },
+  emptyIconBox: {
+    width: 80, height: 80, borderRadius: 24,
+    backgroundColor: COLORS.bgCard,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  emptyTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700' },
+  emptyText:  { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', maxWidth: 220 },
 });

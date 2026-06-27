@@ -368,14 +368,17 @@ def list_my_documents(
 
 @router.get("/{communique_id}/download")
 def download_document(communique_id: str, db: Session = Depends(get_db)):
+    # Accessible publiquement — pas besoin d'être archivé
     communique = db.query(Communique).filter(
-        Communique.id_communique == communique_id,
-        Communique.est_archive == True
+        Communique.id_communique == communique_id
     ).first()
     if not communique:
-        raise HTTPException(status_code=404, detail="Document non trouvé ou non archivé.")
+        raise HTTPException(status_code=404, detail="Document non trouvé.")
     if not communique.fichier_signe or not os.path.exists(communique.fichier_signe):
-        raise HTTPException(status_code=404, detail="Fichier introuvable.")
+        raise HTTPException(
+            status_code=404,
+            detail="Le fichier PDF signé n'est pas encore disponible pour ce communiqué."
+        )
 
     def iter_file():
         with open(communique.fichier_signe, 'rb') as f:

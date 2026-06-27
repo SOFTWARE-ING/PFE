@@ -7,61 +7,63 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Définit dynamiquement l'URL de base à chaque requête,
-// selon l'adresse configurée par l'utilisateur dans "Paramètres".
 apiClient.interceptors.request.use(async (config) => {
   config.baseURL = await getApiBaseUrl();
   return config;
 });
 
-// ─── COMMUNIQUÉS / RECHERCHE ──────────────────────────────────────────
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => Promise.reject(error)
+);
 
-// Communiqués récents (page d'accueil)
+// ─── Communiqués récents (accueil) ──────────────────────────────────
 export const getRecentCommuniques = async (limit = 20) => {
   const response = await apiClient.get('/search/recent', { params: { limit } });
-  return response.data; // { success, total, results: [...] }
+  return response.data;
 };
 
-// Recherche d'un communiqué signé (titre / contenu)
+// ─── Recherche ────────────────────────────────────────────────────────
 export const searchCommuniques = async (query, page = 1, limit = 20) => {
   const response = await apiClient.get('/search/simple', {
     params: { q: query, page, limit },
   });
-  return response.data; // { success, query, total, page, limit, results: [{communique, score}] }
+  return response.data;
 };
 
-// Suggestions d'auto-complétion pour la barre de recherche
 export const getSearchSuggestions = async (query, limit = 5) => {
   const response = await apiClient.get('/search/suggestions', {
     params: { q: query, limit },
   });
-  return response.data; // { query, suggestions: [...] }
+  return response.data;
 };
 
-// Détail public d'un communiqué (institution, signataire, etc.)
+// ─── Détail d'un communiqué ──────────────────────────────────────────
 export const getCommuniqueDetail = async (id) => {
   const response = await apiClient.get(`/search/communique/${id}`);
-  return response.data; // { success, communique: {...} }
+  return response.data;
 };
 
-// ─── VÉRIFICATION D'AUTHENTICITÉ ──────────────────────────────────────
-
-// Vérifie l'authenticité d'un document (photo prise ou fichier choisi).
-// `file` = { uri, name, type }
+// ─── Vérification d'un document ──────────────────────────────────────
 export const verifyDocument = async (file) => {
   const formData = new FormData();
   formData.append('file', {
-    uri: file.uri,
+    uri:  file.uri,
     name: file.name || 'document.jpg',
     type: file.type || 'image/jpeg',
   });
-
   const response = await apiClient.post('/verify/document', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000, // l'OCR peut prendre quelques secondes
+    timeout: 90000,
   });
-  return response.data; // { document_info, niveau1, niveau2, niveau3, verdict }
+  return response.data;
 };
 
+// ─── URL de téléchargement d'un communiqué ───────────────────────────
+export const getDownloadUrl = async (id) => {
+  const base = await getApiBaseUrl();
+  return `${base}/search/communique/${id}/download`;
+};
+
+export { getApiBaseUrl };
 export default apiClient;
-export { getApiBaseUrl } from '../config/serverConfig';

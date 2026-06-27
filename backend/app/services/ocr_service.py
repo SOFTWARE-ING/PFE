@@ -103,13 +103,77 @@ class OCRService:
 
     @staticmethod
     def _preprocess(image: Image.Image) -> Image.Image:
-        """Améliore la qualité pour les photos mobiles de documents."""
-        if image.mode not in ('L', 'RGB'):
+        """
+        Pipeline de prétraitement avancé pour photos mobiles de documents.
+        Utilise OpenCV (CLAHE + débruitage + binarisation adaptative) pour
+        maximiser la lisibilité OCR même sur des photos de mauvaise qualité.
+        """
+        import numpy as np
+        try:
+            import cv2
+            HAS_CV2 = True
+        except ImportError:
+            HAS_CV2 = False
+
+        # ── Normalise le mode couleur ─────────────────────────────────────
+        if image.mode not in ('L', 'RGB', 'RGBA'):
             image = image.convert('RGB')
-        image = image.convert('L')
-        image = ImageEnhance.Contrast(image).enhance(1.5)
-        image = image.filter(ImageFilter.SHARPEN)
-        return image
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+
+        # ── Upscale si l'image est trop petite (améliore beaucoup l'OCR) ──
+        w, h = image.size
+        if w < 1800:
+            scale = 1800 / w
+            image = image.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+
+        if not HAS_CV2:
+            # Fallback PIL basique si OpenCV manquant
+            image = image.convert('L')
+            image = ImageEnhance.Contrast(image).enhance(2.5)
+            image = image.filter(ImageFilter.SHARPEN)
+            image = image.filter(ImageFilter.SHARPEN)
+            return image
+
+        # ── Conversion PIL → NumPy ─────────────────────────────────────────
+        img_np = np.array(image)
+
+        # ── Niveaux de gris ────────────────────────────────────────────────
+        if len(img_np.shape) == 3:
+            gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = img_np.copy()
+
+        # ── Débruitage doux (conserve les bords du texte) ─────────────────
+        # h=10 : force du débruitage, templateWindowSize=7, searchWindowSize=21
+        denoised = cv2.fastNlMeansDenoising(gray, h=10, templateWindowSize=7, searchWindowSize=21)
+
+        # ── CLAHE — égalisation locale du contraste ───────────────────────
+        # Corrige les zones sombres/surexposées sur la même image
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        equalized = clahe.apply(denoised)
+
+        # ── Unsharp mask (accentuation des bords) ─────────────────────────
+        blurred = cv2.GaussianBlur(equalized, (0, 0), 3)
+        sharpened = cv2.addWeighted(equalized, 1.5, blurred, -0.5, 0)
+
+        # ── Binarisation adaptative de Sauvola (via Otsu + Gaussian) ──────
+        # Plus robuste que le threshold global pour les documents avec ombres
+        binary = cv2.adaptiveThreshold(
+            sharpened,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            blockSize=31,
+            C=10,
+        )
+
+        # ── Morphologie : fermeture douce pour reconnecter les lettres ────
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        cleaned = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+
+        # ── Reconversion en image PIL ──────────────────────────────────────
+        return Image.fromarray(cleaned)
 
 
     # @staticmethod

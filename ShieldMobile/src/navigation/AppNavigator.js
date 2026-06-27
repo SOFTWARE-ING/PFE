@@ -3,19 +3,16 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 
-import HomeScreen          from '../screens/HomeScreen';
-import DetailScreen        from '../screens/DetailScreen';
-import ScanScreen          from '../screens/ScanScreen';
-import VerifyScreen        from '../screens/VerifyScreen';
-import SearchScreen        from '../screens/SearchScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
-import SettingsScreen      from '../screens/SettingsScreen';
+import HomeScreen     from '../screens/HomeScreen';
+import DetailScreen   from '../screens/DetailScreen';
+import ScanScreen     from '../screens/ScanScreen';
+import VerifyScreen   from '../screens/VerifyScreen';
+import SearchScreen   from '../screens/SearchScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import { COLORS } from '../theme/colors';
-import {
-  IconHome, IconSearch, IconCamera, IconBell, IconSettings,
-} from '../components/Icon';
+import { IconHome, IconSearch, IconCamera, IconSettings, IconScan } from '../components/Icon';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -47,10 +44,20 @@ function ScanStack() {
   );
 }
 
-function TabIcon({ Icon, focused }) {
+function TabBarIcon({ focused, Icon }) {
   return (
     <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
       <Icon size={22} color={focused ? COLORS.primary : COLORS.tabInactive} />
+    </View>
+  );
+}
+
+function ScanTabIcon() {
+  return (
+    <View style={styles.scanFab}>
+      <View style={styles.scanFabInner}>
+        <IconScan size={26} color="#fff" />
+      </View>
     </View>
   );
 }
@@ -61,63 +68,27 @@ export default function AppNavigator() {
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
-          tabBarStyle: {
-            backgroundColor: COLORS.bgCard,
-            borderTopWidth: 1,
-            borderTopColor: COLORS.border,
-            height: 64,
-            paddingBottom: 8,
-            paddingTop: 6,
-          },
+          tabBarStyle: styles.tabBar,
           tabBarActiveTintColor:   COLORS.primary,
           tabBarInactiveTintColor: COLORS.tabInactive,
-          tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 0 },
+          tabBarShowLabel: false,
         }}
       >
-        <Tab.Screen
-          name="Home"
+        <Tab.Screen name="Home"
           component={HomeStack}
-          options={{
-            tabBarLabel: 'Accueil',
-            tabBarIcon: ({ focused }) => <TabIcon Icon={IconHome} focused={focused} />,
-          }}
+          options={{ tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} Icon={IconHome} /> }}
         />
-        <Tab.Screen
-          name="Search"
+        <Tab.Screen name="Search"
           component={SearchStack}
-          options={{
-            tabBarLabel: 'Recherche',
-            tabBarIcon: ({ focused }) => <TabIcon Icon={IconSearch} focused={focused} />,
-          }}
+          options={{ tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} Icon={IconSearch} /> }}
         />
-        <Tab.Screen
-          name="Scanner"
+        <Tab.Screen name="Scanner"
           component={ScanStack}
-          options={{
-            tabBarLabel: 'Vérifier',
-            tabBarIcon: ({ focused }) => (
-              <View style={styles.scanTabBtn}>
-                <IconCamera size={26} color="#fff" />
-              </View>
-            ),
-            tabBarLabelStyle: { fontSize: 10, fontWeight: '700', color: COLORS.primary },
-          }}
+          options={{ tabBarIcon: () => <ScanTabIcon /> }}
         />
-        <Tab.Screen
-          name="Notifications"
-          component={NotificationsScreen}
-          options={{
-            tabBarLabel: 'Alertes',
-            tabBarIcon: ({ focused }) => <TabIcon Icon={IconBell} focused={focused} />,
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
+        <Tab.Screen name="Settings"
           component={SettingsScreen}
-          options={{
-            tabBarLabel: 'Paramètres',
-            tabBarIcon: ({ focused }) => <TabIcon Icon={IconSettings} focused={focused} />,
-          }}
+          options={{ tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} Icon={IconSettings} /> }}
         />
       </Tab.Navigator>
     </NavigationContainer>
@@ -125,20 +96,33 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: COLORS.bgNav,
+    borderTopWidth: 0,
+    height: Platform.OS === 'android' ? 68 : 80,
+    paddingBottom: Platform.OS === 'android' ? 8 : 20,
+    paddingTop: 10,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
   tabIcon: {
-    width: 36, height: 36, borderRadius: 10,
+    width: 44, height: 44, borderRadius: 14,
     justifyContent: 'center', alignItems: 'center',
   },
   tabIconActive: {
     backgroundColor: COLORS.primaryPale,
   },
-  scanTabBtn: {
-    width: 50, height: 50, borderRadius: 25,
+  scanFab: {
+    width: 58, height: 58, borderRadius: 18,
+    backgroundColor: COLORS.bgApp,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: Platform.OS === 'android' ? 10 : 0,
+  },
+  scanFabInner: {
+    width: 52, height: 52, borderRadius: 16,
     backgroundColor: COLORS.primary,
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: 6,
     shadowColor: COLORS.primary,
-    shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    shadowOpacity: 0.6, shadowRadius: 12, elevation: 10,
   },
 });

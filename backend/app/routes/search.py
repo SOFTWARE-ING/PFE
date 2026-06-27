@@ -389,6 +389,35 @@ def get_communique_detail(communique_id: str, db: Session = Depends(get_db)):
     }
 
 
+@router.get("/communique/{communique_id}/download")
+def download_communique_public(communique_id: str, db: Session = Depends(get_db)):
+    """
+    Téléchargement public du PDF d'un communiqué.
+    Utilisé par l'application mobile (pas d'authentification requise).
+    """
+    import os
+    from fastapi.responses import StreamingResponse
+    from app.models.models import Communique as CommuniqueModel
+
+    communique = db.query(CommuniqueModel).filter(
+        CommuniqueModel.id_communique == communique_id
+    ).first()
+    if not communique:
+        raise HTTPException(status_code=404, detail="Communiqué non trouvé.")
+    if not communique.fichier_signe or not os.path.exists(communique.fichier_signe):
+        raise HTTPException(status_code=404, detail="Fichier PDF non disponible pour ce communiqué.")
+
+    def iter_file():
+        with open(communique.fichier_signe, 'rb') as f:
+            yield from f
+
+    titre_safe = (communique.titre or communique_id[:8]).replace(' ', '_')[:40]
+    return StreamingResponse(
+        iter_file(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={titre_safe}.pdf"}
+    )
+
 # ============================================================================
 # ENDPOINT DE TEST (comparaison des algorithmes)
 # ============================================================================

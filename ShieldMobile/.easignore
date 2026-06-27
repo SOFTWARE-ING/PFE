@@ -1,0 +1,11 @@
+node_modules/
+.git/
+android/
+ios/
+.expo/
+*.log
+*.md
+__tests__/
+coverage/
+.vscode/
+.idea/
